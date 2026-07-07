@@ -1,25 +1,26 @@
-const { OAuth2Client } = require('google-auth-library');
 const { nanoid } = require('nanoid');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const redis = require('../config/redis');
 const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 const {
   generateAccessToken,
   generateRefreshToken,
   hashToken,
   safeCompare,
 } = require('../utils/token');
+const { GoogleAuthService } = require('../services/GoogleAuthService');
+const { incrementAndGetLockout, resetLockout } = require('../middleware/bruteForce');
 
-const googleClient = new OAuth2Client(config.google.clientId);
+const googleAuth = new GoogleAuthService();
 
 // Refresh-token TTL in seconds (7 days)
 const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60;
 
 /**
  * Build cookie options for the refresh token.
- * Centralized so every path sets identical flags.
  */
 const getRefreshCookieOptions = () => ({
   httpOnly: true,
@@ -31,91 +32,161 @@ const getRefreshCookieOptions = () => ({
 });
 
 /**
+ * Extract the client IP from the request, respecting the trust-proxy setting.
+ */
+const getClientIp = (req) => req.ip || req.connection?.remoteAddress || 'unknown';
+
+/**
+ * Shared helper that finalizes an authenticated Google user session.
+ *
+ * Steps:
+ *  1. Find-or-create the MongoDB user record.
+ *  2. Issue an access token (JWT) and an opaque refresh token.
+ *  3. Store the hashed refresh token in Redis with a token-family ID for replay detection.
+ *  4. Set the refresh token as an httpOnly cookie.
+ *  5. Return the access token and user profile to the client.
+ *
+ * @param {object}  googlePayload — Validated payload from GoogleAuthService
+ * @param {string}  ip            — Client IP (for audit logging)
+ * @returns {{ accessToken: string, user: object }}
+ */
+async function createSession(googlePayload, ip) {
+  const { sub: googleId, email, name, picture } = googlePayload;
+
+  // Find-or-create the user
+  let user = await User.findOne({ googleId });
+  if (!user) {
+    user = await User.create({
+      googleId,
+      email,
+      name,
+      avatarUrl: picture || '',
+      shareToken: nanoid(12),
+    });
+    logger.security('user.created', { userId: user._id.toString(), googleId, email, ip });
+  } else {
+    // Refresh profile fields from Google (name/picture can change)
+    const changed = [];
+    if (user.name !== name) { user.name = name; changed.push('name'); }
+    if (user.email !== email) { user.email = email; changed.push('email'); }
+    if (picture && user.avatarUrl !== picture) { user.avatarUrl = picture; changed.push('avatarUrl'); }
+    if (changed.length) {
+      await user.save();
+      logger.security('user.profile_updated', { userId: user._id.toString(), changed, ip });
+    }
+  }
+
+  // Issue tokens
+  const accessToken = generateAccessToken(user._id.toString());
+  const refreshToken = generateRefreshToken();
+  const familyId = nanoid(16);
+  const hashedRefresh = hashToken(refreshToken);
+
+  // Persist hashed refresh token with family ID (replay detection)
+  await redis.set(
+    `refresh:${user._id}`,
+    JSON.stringify({ hash: hashedRefresh, family: familyId }),
+    'EX',
+    REFRESH_TOKEN_TTL
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+    },
+  };
+}
+
+// ──────────────────────────────────────────────
+//  Handlers
+// ──────────────────────────────────────────────
+
+/**
  * POST /auth/google
- * Exchange a Google ID token for an application session.
+ *
+ * ID token flow — the client sends the token directly after Google sign-in.
+ * The server verifies it cryptographically and creates/updates the user.
  */
 const googleLogin = async (req, res, next) => {
   try {
+    const ip = getClientIp(req);
     const { idToken } = req.body;
-    // idToken presence and type are guaranteed by Zod validation middleware
 
-    // 1. Verify the Google ID token (signature + aud + iss)
-    let payload;
-    try {
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: config.google.clientId,
-      });
-      payload = ticket.getPayload();
-    } catch (verifyErr) {
-      throw new ApiError(401, 'invalid_token', 'Google ID token verification failed');
-    }
+    const googlePayload = await googleAuth.verifyIdToken(idToken);
 
-    if (!payload) {
-      throw new ApiError(401, 'invalid_token', 'Google ID token payload is empty');
-    }
+    // Brute-force counter reset: we only get here if verification succeeded
+    await resetLockout(ip);
 
-    // 2. Reject unverified email addresses
-    if (!payload.email_verified) {
-      throw new ApiError(401, 'invalid_token', 'Google account email is not verified');
-    }
+    const session = await createSession(googlePayload, ip);
 
-    const { sub: googleId, email, name, picture } = payload;
+    res.cookie('refreshToken', session.refreshToken, getRefreshCookieOptions());
 
-    // 3. Find-or-create the user
-    let user = await User.findOne({ googleId });
-    if (!user) {
-      user = await User.create({
-        googleId,
-        email,
-        name,
-        avatarUrl: picture || '',
-        shareToken: nanoid(12),
-      });
-    } else {
-      // Update profile fields that may have changed on Google's side
-      user.name = name;
-      user.email = email;
-      user.avatarUrl = picture || user.avatarUrl;
-      await user.save();
-    }
-
-    // 4. Issue application tokens
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken();
-
-    // 5. Store hashed refresh token in Redis with a token family ID.
-    //    The family ID allows detecting token reuse (replay attacks).
-    const familyId = nanoid(16);
-    const hashedRefresh = hashToken(refreshToken);
-    await redis.set(
-      `refresh:${user._id}`,
-      JSON.stringify({ hash: hashedRefresh, family: familyId }),
-      'EX',
-      REFRESH_TOKEN_TTL
-    );
-
-    // 6. Set refresh token as httpOnly cookie
-    res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
+    logger.security('auth.login_success', {
+      userId: session.user.id,
+      email: googlePayload.email,
+      method: 'id_token',
+      ip,
+    });
 
     res.status(200).json({
-      accessToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-      },
+      accessToken: session.accessToken,
+      user: session.user,
     });
   } catch (err) {
-    if (err.name === 'ApiError') return next(err);
-    // Catch any other Google auth library errors
-    if (
-      err.message?.includes('Token used too late') ||
-      err.message?.includes('Invalid token') ||
-      err.message?.includes('Wrong number of segments')
-    ) {
-      return next(new ApiError(401, 'invalid_token', 'Google ID token is invalid or expired'));
+    if (err.name === 'GoogleAuthError') {
+      const ip = getClientIp(req);
+      await incrementAndGetLockout(ip).catch(() => {});
+      logger.security('auth.login_failed', { code: err.code, ip, reason: err.message });
+      return next(new ApiError(401, err.code, err.message));
+    }
+    next(err);
+  }
+};
+
+/**
+ * POST /auth/google/code
+ *
+ * Authorization code flow (preferred for production).
+ * The client sends a one-time Google auth code; the server exchanges it for
+ * tokens server-to-server, verifies the resulting ID token, and creates the session.
+ *
+ * This is MORE SECURE because the ID token is never exposed on the client.
+ */
+const googleLoginWithCode = async (req, res, next) => {
+  try {
+    const ip = getClientIp(req);
+    const { code } = req.body;
+
+    const { payload: googlePayload } = await googleAuth.exchangeAuthCode(code);
+
+    await resetLockout(ip);
+
+    const session = await createSession(googlePayload, ip);
+
+    res.cookie('refreshToken', session.refreshToken, getRefreshCookieOptions());
+
+    logger.security('auth.login_success', {
+      userId: session.user.id,
+      email: googlePayload.email,
+      method: 'auth_code',
+      ip,
+    });
+
+    res.status(200).json({
+      accessToken: session.accessToken,
+      user: session.user,
+    });
+  } catch (err) {
+    if (err.name === 'GoogleAuthError') {
+      const ip = getClientIp(req);
+      await incrementAndGetLockout(ip).catch(() => {});
+      logger.security('auth.login_failed', { code: err.code, ip, reason: err.message });
+      return next(new ApiError(401, err.code, err.message));
     }
     next(err);
   }
@@ -123,11 +194,15 @@ const googleLogin = async (req, res, next) => {
 
 /**
  * POST /auth/refresh
+ *
  * Rotates the refresh token and returns a new access token.
  *
- * Security: uses timing-safe hash comparison and token-family-based
- * replay detection. If a refresh token is reused (possible theft),
- * the entire family is revoked.
+ * Security features:
+ *  - Timing-safe hash comparison prevents side-channel attacks.
+ *  - Token-family replay detection: if an old, rotated token is reused, the
+ *    entire family is revoked (possible theft indicator).
+ *  - Session corruption detection: invalid Redis data triggers forced re-login.
+ *  - Client IP is logged for anomaly detection.
  */
 const refreshSession = async (req, res, next) => {
   try {
@@ -136,7 +211,6 @@ const refreshSession = async (req, res, next) => {
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'No refresh token provided');
     }
 
-    // Guard against absurdly long cookie values
     if (typeof token !== 'string' || token.length > 200) {
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Malformed refresh token');
     }
@@ -165,7 +239,6 @@ const refreshSession = async (req, res, next) => {
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Cannot identify session');
     }
 
-    // Retrieve stored token data
     const storedRaw = await redis.get(`refresh:${userId}`);
     if (!storedRaw) {
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Session has expired');
@@ -175,22 +248,19 @@ const refreshSession = async (req, res, next) => {
     try {
       storedData = JSON.parse(storedRaw);
     } catch {
-      // Corrupted data — force re-login
       await redis.del(`refresh:${userId}`);
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Session is corrupted');
     }
 
-    // Timing-safe comparison to prevent timing attacks
     if (!safeCompare(storedData.hash, hashedToken)) {
       // Possible token replay attack — revoke the entire family
       await redis.del(`refresh:${userId}`);
-      console.warn(
-        `[SECURITY] Refresh token reuse detected for userId=${userId}. Family revoked.`
-      );
+      const ip = getClientIp(req);
+      logger.security('token.replay_attack', { userId, ip, family: storedData.family });
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Refresh token has been revoked');
     }
 
-    // Rotate: issue new tokens with same family
+    // Rotate: issue new tokens with the same family
     const newAccessToken = generateAccessToken(userId);
     const newRefreshToken = generateRefreshToken();
     const newHashedRefresh = hashToken(newRefreshToken);
@@ -203,6 +273,9 @@ const refreshSession = async (req, res, next) => {
     );
 
     res.cookie('refreshToken', newRefreshToken, getRefreshCookieOptions());
+
+    logger.info('auth.token_refreshed', { userId, ip: getClientIp(req) });
+
     res.status(200).json({ accessToken: newAccessToken });
   } catch (err) {
     if (err.name === 'ApiError') return next(err);
@@ -212,12 +285,14 @@ const refreshSession = async (req, res, next) => {
 
 /**
  * POST /auth/logout
+ *
  * Invalidates the refresh token and clears the cookie.
  */
 const logout = async (req, res, next) => {
   try {
     if (req.userId) {
       await redis.del(`refresh:${req.userId}`);
+      logger.security('auth.logout', { userId: req.userId, ip: getClientIp(req) });
     }
 
     res.clearCookie('refreshToken', {
@@ -232,4 +307,5 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { googleLogin, refreshSession, logout };
+module.exports = { googleLogin, googleLoginWithCode, refreshSession, logout };
+

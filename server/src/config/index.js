@@ -2,6 +2,9 @@
  * Centralized configuration — reads from process.env (loaded by dotenv in server.js).
  * Every config value the app needs is exported from here so nothing else touches
  * process.env directly.
+ *
+ * All values have sensible defaults for development. Production deployments MUST
+ * override everything via environment variables.
  */
 
 const config = {
@@ -15,11 +18,17 @@ const config = {
     return this.nodeEnv === 'production';
   },
 
+  // ── Logging ──
+  logLevel: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+
   // ── MongoDB ──
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/tmkoc',
 
   // ── Redis ──
-  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    password: process.env.REDIS_PASSWORD || undefined,
+  },
 
   // ── JWT ──
   jwt: {
@@ -35,6 +44,11 @@ const config = {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    // Redirect URI for the authorization code flow.
+    // Must match EXACTLY what's registered in Google Cloud Console.
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || `${process.env.CLIENT_URL || 'http://localhost:3000'}/auth/callback`,
+    // If set, only users from this Google Workspace domain can sign in.
+    hostedDomain: process.env.GOOGLE_HOSTED_DOMAIN || undefined,
   },
 
   // ── CORS ──
