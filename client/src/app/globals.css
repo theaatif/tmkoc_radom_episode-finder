@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Colors */
+  --color-canvas: #fffaf0;
+  --color-primary-cta: #0a0a0a;
+  --color-primary-cta-active: #1f1f1f;
+  --color-primary-cta-disabled: #e5e5e5;
+  --color-ink: #0a0a0a;
+  --color-body-text: #3a3a3a;
+  --color-body-strong: #1a1a1a;
+  --color-muted-text: #6a6a6a;
+  --color-muted-soft: #9a9a9a;
+  --color-hairline: #e5e5e5;
+  --color-hairline-soft: #f0f0f0;
+  
+  /* Surfaces */
+  --color-surface-soft: #faf5e8;
+  --color-surface-card: #f5f0e0;
+  --color-surface-strong: #ebe6d6;
+  --color-surface-dark: #0a1a1a;
+  --color-surface-dark-elevated: #1a2a2a;
+  
+  /* Saturated Feature Card Accent Colors */
+  --color-brand-pink: #ff4d8b;
+  --color-brand-teal: #1a3a3a;
+  --color-brand-lavender: #b8a4ed;
+  --color-brand-peach: #ffb084;
+  --color-brand-ochre: #e8b94a;
+  --color-brand-mint: #a4d4c5;
+  --color-brand-coral: #ff6b5a;
+
+  /* Explicit Palette Additions */
+  --color-brand-cyan: #00ACC0;
+  --color-brand-yellow: #F4D003;
+  --color-brand-white: #FFFFFF;
+
+  /* Custom Border Radius */
+  --radius-clay-xs: 6px;
+  --radius-clay-sm: 8px;
+  --radius-clay-md: 12px;
+  --radius-clay-lg: 16px;
+  --radius-clay-xl: 24px;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Inter, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Display Typography (Plain Black Substitute) */
+.font-display {
+  font-family: "Plain Black", var(--font-sans), Inter, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+/* Claymorphism UI Shadow Styles */
+.shadow-clay-cyan {
+  box-shadow: 
+    inset 3px 3px 6px rgba(255, 255, 255, 0.4),
+    inset -3px -3px 6px rgba(0, 77, 92, 0.35),
+    0px 6px 12px rgba(0, 172, 192, 0.25);
+}
+
+.shadow-clay-yellow {
+  box-shadow: 
+    inset 3px 3px 6px rgba(255, 255, 255, 0.6),
+    inset -3px -3px 6px rgba(139, 92, 0, 0.3),
+    0px 6px 12px rgba(244, 208, 3, 0.25);
+}
+
+.shadow-clay-dark {
+  box-shadow: 
+    inset 3px 3px 6px rgba(255, 255, 255, 0.15),
+    inset -3px -3px 6px rgba(0, 0, 0, 0.5),
+    0px 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-clay-white {
+  box-shadow: 
+    inset 3px 3px 6px rgba(255, 255, 255, 0.9),
+    inset -3px -3px 6px rgba(0, 0, 0, 0.06),
+    0px 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-clay-active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: 
+    inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.4),
+    inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.2),
+    0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
