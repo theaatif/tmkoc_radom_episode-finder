@@ -2,7 +2,10 @@ import { useEffect, useCallback } from "react";
 import { useEpisodeStore } from "../store/episodeStore";
 import { Episode } from "../components/EpisodeGrid";
 
+import { useAuth } from "@/features/auth/hooks/useAuth";
+
 export function useEpisodeGenerator() {
+  const { isAuthenticated } = useAuth();
   const selectedEra = useEpisodeStore((state) => state.selectedEra);
   const setSelectedEra = useEpisodeStore((state) => state.setSelectedEra);
   const activeEpisode = useEpisodeStore((state) => state.activeEpisode);
@@ -19,14 +22,18 @@ export function useEpisodeGenerator() {
 
   // Sync favorites on mount
   useEffect(() => {
-    loadFavorites();
-  }, [loadFavorites]);
+    if (isAuthenticated) {
+      loadFavorites();
+    }
+  }, [loadFavorites, isAuthenticated]);
 
   // Fetch episodes automatically when selectedEra changes
   useEffect(() => {
-    const genreParam = selectedEra === "all" ? undefined : selectedEra;
-    fetchEpisodes(genreParam);
-  }, [selectedEra, fetchEpisodes]);
+    if (isAuthenticated) {
+      const genreParam = selectedEra === "all" ? undefined : selectedEra;
+      fetchEpisodes(genreParam);
+    }
+  }, [selectedEra, fetchEpisodes, isAuthenticated]);
 
   const handleToggleFavorite = async (episode: Episode, isFav: boolean) => {
     try {

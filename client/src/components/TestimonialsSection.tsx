@@ -52,7 +52,7 @@ export function TestimonialCard({ avatar, name, role, quote }: TestimonialCardPr
 export function TestimonialsSection() {
   const reviews: TestimonialCardProps[] = [
     {
-      avatar: "/images/jethiya-logo.png",
+      avatar: "/images/jethiya-logo2.png",
       name: "Jethalal Gada",
       role: "Gada Electronics, Proprietor",
       quote: "Babita ji suggested this app to me, and now I randomize episodes every night after sorting Gada Electronics ledger sheets! Tapli to Sundar for not building this sooner.",

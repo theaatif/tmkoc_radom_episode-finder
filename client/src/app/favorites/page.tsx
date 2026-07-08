@@ -7,11 +7,13 @@ import Image from "next/image";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { useFavorites } from "@/features/episodes/hooks/useFavorites";
-import { EpisodeGrid, Episode } from "@/features/episodes/components/EpisodeGrid";
+import { Episode } from "@/features/episodes/components/EpisodeGrid";
+import { FavoritesPinterestCarousel } from "@/features/episodes/components/FavoritesPinterestCarousel";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 
 export default function FavoritesPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
@@ -66,14 +68,7 @@ export default function FavoritesPage() {
   const favoritedIds = React.useMemo(() => new Set(favorites.map((f) => f.id)), [favorites]);
 
   if (authLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
-        <Spinner size="lg" className="border-t-brand-cyan" />
-        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-          Verifying your session...
-        </p>
-      </div>
-    );
+    return <SessionLoader type="grid" />;
   }
 
   if (!isAuthenticated) {
@@ -137,12 +132,7 @@ export default function FavoritesPage() {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col justify-start">
             {favoritesLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 flex-1">
-                <Spinner size="lg" className="border-t-brand-cyan" />
-                <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-                  Loading your favorites...
-                </p>
-              </div>
+              <PageSkeleton type="grid" />
             ) : error ? (
               <div className="flex flex-col items-center text-center gap-4 py-20 flex-1">
                 <div className="h-12 w-12 rounded-full bg-brand-coral/10 text-brand-coral flex items-center justify-center text-xl font-bold">
@@ -156,8 +146,8 @@ export default function FavoritesPage() {
               </div>
             ) : favorites.length > 0 ? (
               <div className="flex flex-col space-y-8 flex-1">
-                {/* Episodes Grid */}
-                <EpisodeGrid
+                {/* Pinterest Carousel Layout */}
+                <FavoritesPinterestCarousel
                   episodes={favorites}
                   onSelectEpisode={(ep) => setActiveEpisode(ep)}
                   favoritedIds={favoritedIds}

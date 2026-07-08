@@ -30,7 +30,7 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-2 group">
             <div className="relative h-8 w-8 rounded-full overflow-hidden border border-slate-200/40 shadow-sm bg-brand-white/90">
               <Image
-                src="/images/jethiya-logo.png"
+                src="/images/jethiya-logo2.png"
                 alt="Jethiya Logo"
                 fill
                 sizes="32px"

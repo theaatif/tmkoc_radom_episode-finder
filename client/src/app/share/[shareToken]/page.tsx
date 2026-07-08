@@ -9,9 +9,10 @@ import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { fetchSharedFavorites } from "@/features/episodes/episodes.api";
 import { EpisodeGrid, Episode } from "@/features/episodes/components/EpisodeGrid";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 
 interface SharePageProps {
   params: Promise<{ shareToken: string }>;
@@ -76,14 +77,7 @@ export default function SharePage({ params }: SharePageProps) {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
-        <Spinner size="lg" className="border-t-brand-cyan" />
-        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-          Verifying your session...
-        </p>
-      </div>
-    );
+    return <SessionLoader type="grid" />;
   }
 
   if (!isAuthenticated) {
@@ -143,12 +137,7 @@ export default function SharePage({ params }: SharePageProps) {
           {/* Content Area */}
           <div className="flex-1 flex flex-col justify-start">
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 flex-1">
-                <Spinner size="lg" className="border-t-brand-cyan" />
-                <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-                  Loading shared list...
-                </p>
-              </div>
+              <PageSkeleton type="grid" />
             ) : error ? (
               <div className="flex flex-col items-center text-center gap-4 py-20 flex-1">
                 <div className="h-12 w-12 rounded-full bg-brand-coral/10 text-brand-coral flex items-center justify-center text-xl font-bold">

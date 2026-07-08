@@ -11,7 +11,6 @@ import {
 
 interface EpisodeState {
   selectedEra: string;
-  loadedGenre: string | null; // Tracks the genre of the episodes currently in memory
   activeEpisode: Episode | null;
   favoritedIds: Set<string>;
   episodes: Episode[];
@@ -19,24 +18,29 @@ interface EpisodeState {
   error: string | null;
   isExhausted: boolean;
   
+  // Independent caches for each era
+  eraCache: Record<string, Episode[]>;
+  eraExhausted: Record<string, boolean>;
+  
   // Actions
   setSelectedEra: (era: string) => void;
-  setActiveEpisode: (episode: Episode | null, onWatched?: () => void) => void;
+  setActiveEpisode: (episode: Episode | null) => void;
   loadFavorites: () => Promise<void>;
   toggleFavorite: (episode: Episode, isFav: boolean) => Promise<void>;
   fetchEpisodes: (genre?: string, force?: boolean) => Promise<void>;
-  invalidateEpisodes: () => void;
 }
 
 export const useEpisodeStore = create<EpisodeState>((set, get) => ({
   selectedEra: "all",
-  loadedGenre: null,
   activeEpisode: null,
   favoritedIds: new Set<string>(),
   episodes: [],
   loading: false,
   error: null,
   isExhausted: false,
+  
+  eraCache: {},
+  eraExhausted: {},
 
   setSelectedEra: (era) => set({ selectedEra: era }),
   setActiveEpisode: (episode) => set({ activeEpisode: episode }),
@@ -44,11 +48,7 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
   loadFavorites: async () => {
     try {
       const ids = await fetchFavoriteIds();
-      const current = get().favoritedIds;
-      // Avoid spurious re-renders — only set if content actually changed
-      if (ids.size !== current.size || [...ids].some((id) => !current.has(id))) {
-        set({ favoritedIds: ids });
-      }
+      set({ favoritedIds: ids });
     } catch (err) {
       console.error("Failed to fetch favorite IDs:", err);
     }
@@ -78,30 +78,45 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
   },
 
   fetchEpisodes: async (genre, force = false) => {
-    const { episodes, loadedGenre } = get();
+    const { eraCache, eraExhausted } = get();
     const currentGenre = genre === undefined ? "all" : genre;
     
-    const isCached = episodes.length > 0 && loadedGenre === currentGenre;
-    if (!force && isCached) {
+    // Check if we have cached episodes for the target era
+    const cachedEpisodes = eraCache[currentGenre];
+    const hasCache = cachedEpisodes !== undefined && (cachedEpisodes.length > 0 || eraExhausted[currentGenre]);
+
+    // Cache hit: if not forced and cached data exists, load it immediately without API request
+    if (!force && hasCache) {
+      set({
+        episodes: cachedEpisodes,
+        isExhausted: eraExhausted[currentGenre] || false,
+      });
       return;
     }
 
     set({ loading: true, error: null });
     try {
       const data = await generateEpisodes(genre);
-      if (data.done) {
-        set({ isExhausted: true, episodes: [], loadedGenre: currentGenre });
-      } else {
-        set({ episodes: data.episodes || [], isExhausted: false, loadedGenre: currentGenre });
-      }
+      
+      const newEpisodes = data.episodes || [];
+      const isExh = !!data.done;
+
+      set((state) => ({
+        episodes: newEpisodes,
+        isExhausted: isExh,
+        eraCache: {
+          ...state.eraCache,
+          [currentGenre]: newEpisodes,
+        },
+        eraExhausted: {
+          ...state.eraExhausted,
+          [currentGenre]: isExh,
+        },
+      }));
     } catch (err: any) {
       set({ error: err?.message || "Failed to generate episodes." });
     } finally {
       set({ loading: false });
     }
-  },
-
-  invalidateEpisodes: () => {
-    set({ loadedGenre: null, episodes: [], isExhausted: false });
   },
 }));

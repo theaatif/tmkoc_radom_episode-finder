@@ -8,25 +8,13 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { useWatchHistory } from "@/features/episodes/hooks/useWatchHistory";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
+import { HistoryPinterestGrid } from "@/features/episodes/components/HistoryPinterestGrid";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFavorites } from "@/features/episodes/hooks/useFavorites";
 import { fetchFavoriteIds } from "@/features/episodes/episodes.api";
-import { Heart } from "lucide-react";
-
-function WatchedDate({ date }: { date: string }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return <>&nbsp;</>;
-  return <>{new Date(date).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })}</>;
-}
 
 export default function HistoryPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -47,8 +35,10 @@ export default function HistoryPage() {
 
   // Lightweight favorite IDs for heart icon state
   useEffect(() => {
-    fetchFavoriteIds().then(setFavoritedIds).catch(() => {});
-  }, []);
+    if (isAuthenticated) {
+      fetchFavoriteIds().then(setFavoritedIds).catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   const handleToggleFavorite = async (episodeId: string, isFav: boolean) => {
     try {
@@ -82,14 +72,7 @@ export default function HistoryPage() {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
-        <Spinner size="lg" className="border-t-brand-cyan" />
-        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-          Verifying your session...
-        </p>
-      </div>
-    );
+    return <SessionLoader type="grid" />;
   }
 
   if (!isAuthenticated) {
@@ -149,12 +132,7 @@ export default function HistoryPage() {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col justify-start">
             {historyLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 flex-1">
-                <Spinner size="lg" className="border-t-brand-cyan" />
-                <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-                  Loading watch history...
-                </p>
-              </div>
+              <PageSkeleton type="grid" />
             ) : error ? (
               <div className="flex flex-col items-center text-center gap-4 py-20 flex-1">
                 <div className="h-12 w-12 rounded-full bg-brand-coral/10 text-brand-coral flex items-center justify-center text-xl font-bold">
@@ -168,61 +146,13 @@ export default function HistoryPage() {
               </div>
             ) : episodes.length > 0 ? (
               <div className="flex flex-col space-y-8 flex-1">
-                {/* Episodes Grid */}
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {episodes.map((episode) => (
-                    <Card
-                      key={episode.id + "-" + episode.watchedAt}
-                      className="cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md border border-hairline bg-surface-card hover:bg-brand-white"
-                      onClick={() =>
-                        setActiveEpisode({
-                          id: episode.id,
-                          youtubeVideoId: episode.youtubeVideoId,
-                        })
-                      }
-                    >
-                      <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 relative">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={episode.thumbnailUrl || `https://img.youtube.com/vi/${episode.youtubeVideoId}/0.jpg`}
-                          alt={episode.title}
-                          className="h-full w-full object-cover"
-                        />
-
-                        {/* Heart Button Overlay */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const isFav = favoritedIds.has(episode.id);
-                            handleToggleFavorite(episode.id, isFav);
-                          }}
-                          className="absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all border shadow-sm bg-black/40 border-white/10 text-white/80 hover:bg-black/60 hover:text-white"
-                          aria-label={favoritedIds.has(episode.id) ? "Remove from favorites" : "Add to favorites"}
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${favoritedIds.has(episode.id) ? "fill-brand-coral text-brand-coral" : ""}`}
-                          />
-                        </button>
-
-                        <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-brand-white px-2 py-0.5 rounded text-[10px] font-bold">
-                          Watched
-                        </div>
-                      </div>
-                      <CardHeader className="p-4">
-                        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-text">
-                          <span>{episode.genre}</span>
-                          <span className="normal-case text-[10px] text-zinc-400 font-medium">
-                          <WatchedDate date={episode.watchedAt} />
-                        </span>
-                        </div>
-                        <CardTitle className="mt-1.5 text-sm line-clamp-2 leading-snug font-bold text-ink">
-                          {episode.title}
-                        </CardTitle>
-                      </CardHeader>
-                    </Card>
-                  ))}
-                </div>
+                {/* Pinterest Columns Layout */}
+                <HistoryPinterestGrid
+                  episodes={episodes}
+                  onSelectEpisode={setActiveEpisode}
+                  favoritedIds={favoritedIds}
+                  onToggleFavorite={handleToggleFavorite}
+                />
 
                 {/* Pagination Controls */}
                 {pagination.totalPages > 1 && (

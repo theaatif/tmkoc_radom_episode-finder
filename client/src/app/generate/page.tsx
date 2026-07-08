@@ -7,8 +7,8 @@ import Image from "next/image";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { EpisodeGenerator } from "@/features/episodes/components/EpisodeGenerator";
+import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
-import { Spinner } from "@/components/ui/spinner";
 
 export default function GeneratePage() {
   const { isAuthenticated, loading } = useAuth();
@@ -26,14 +26,7 @@ export default function GeneratePage() {
   }, [loading, isAuthenticated]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
-        <Spinner size="lg" className="border-t-brand-cyan" />
-        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
-          Verifying your session...
-        </p>
-      </div>
-    );
+    return <SessionLoader type="finder" />;
   }
 
   if (!isAuthenticated) {
