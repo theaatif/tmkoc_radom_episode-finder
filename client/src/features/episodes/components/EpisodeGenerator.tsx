@@ -253,7 +253,7 @@ export function EpisodeGenerator() {
         ) : episodes.length > 0 ? (
           <div className="w-full flex flex-col space-y-6 animate-fade-in">
             {/* Header of Results */}
-            <div className="flex items-center justify-between pb-4 border-b border-hairline">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-hairline">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Unwatched Episodes
               </span>
@@ -261,10 +261,10 @@ export function EpisodeGenerator() {
                 onClick={handleGenerate}
                 variant="secondary"
                 size="sm"
-                className="group text-xs font-bold shadow-clay-white flex items-center gap-2 px-4 py-2.5 rounded-full border border-slate-200/60 active:scale-95 transition-all"
+                className="group text-xs font-bold shadow-clay-white flex items-center gap-2 px-4 py-2.5 rounded-full border border-slate-200/60 active:scale-95 transition-all whitespace-nowrap w-full sm:w-auto justify-center"
               >
                 <RefreshCw className="h-3.5 w-3.5 text-brand-cyan group-hover:rotate-180 transition-transform duration-500" />
-                <span>Find More Episodes</span>
+                <span>Shuffle New Batch</span>
               </Button>
             </div>
 
