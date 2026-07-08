@@ -10,6 +10,7 @@ import { useFavorites } from "@/features/episodes/hooks/useFavorites";
 import { Episode } from "@/features/episodes/components/EpisodeGrid";
 import { FavoritesPinterestCarousel } from "@/features/episodes/components/FavoritesPinterestCarousel";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
+import { ShareFavoritesButton } from "@/features/episodes/components/ShareFavoritesButton";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
@@ -19,7 +20,6 @@ export default function FavoritesPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null);
 
   const {
@@ -50,15 +50,6 @@ export default function FavoritesPage() {
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
     }
-  };
-
-  const handleCopyShareLink = () => {
-    if (!user?.shareToken) return;
-    const shareUrl = `${window.location.origin}/share/${user.shareToken}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -119,13 +110,7 @@ export default function FavoritesPage() {
               </p>
             </div>
             {favorites.length > 0 && user?.shareToken && (
-              <Button
-                variant="cyan"
-                onClick={handleCopyShareLink}
-                className="cursor-pointer font-bold shadow-clay-cyan shrink-0 self-start sm:self-end"
-              >
-                {copied ? "✓ Copied Link!" : "🔗 Share Favorites"}
-              </Button>
+              <ShareFavoritesButton shareToken={user.shareToken} />
             )}
           </div>
 

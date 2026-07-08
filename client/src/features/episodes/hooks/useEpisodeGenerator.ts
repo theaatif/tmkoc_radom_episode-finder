@@ -53,8 +53,8 @@ export function useEpisodeGenerator() {
   }, [setActiveEpisode]);
 
   const handleEpisodeWatched = useCallback(() => {
-    invalidateEpisodes();
-  }, [invalidateEpisodes]);
+    // Keep episodes and cache intact so closing the player preserves the old screen state
+  }, []);
 
   const eras = [
     { id: "all", name: "All Eras" },

@@ -28,6 +28,7 @@ interface EpisodeState {
   loadFavorites: () => Promise<void>;
   toggleFavorite: (episode: Episode, isFav: boolean) => Promise<void>;
   fetchEpisodes: (genre?: string, force?: boolean) => Promise<void>;
+  invalidateEpisodes: () => void;
 }
 
 export const useEpisodeStore = create<EpisodeState>((set, get) => ({
@@ -118,5 +119,21 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  invalidateEpisodes: () => {
+    const { selectedEra } = get();
+    set((state) => {
+      const nextCache = { ...state.eraCache };
+      delete nextCache[selectedEra];
+      const nextExhausted = { ...state.eraExhausted };
+      delete nextExhausted[selectedEra];
+      return {
+        episodes: [],
+        isExhausted: false,
+        eraCache: nextCache,
+        eraExhausted: nextExhausted,
+      };
+    });
   },
 }));
