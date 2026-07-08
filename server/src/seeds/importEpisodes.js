@@ -1,26 +1,19 @@
 /**
  * Production-Grade TMKOC Episode Importer / Seeder
- * 
- * This script populates the episodes collection in MongoDB.
- * 
+ *
+ * Populates the episodes collection in MongoDB from YouTube playlists.
+ *
  * Features:
- * 1. Dual Mode:
- *    - YouTube API Mode: If YOUTUBE_API_KEY and YOUTUBE_PLAYLIST_ID are provided,
- *      it fetches all episodes from the specified playlist using paginated API requests.
- *    - Local Fallback Mode: If no key is provided, it seeds a rich, pre-defined catalog
- *      of real TMKOC episodes representing all three eras.
- * 
- * 2. Smart Era Classification:
- *    - Automatically parses the episode number from the title (e.g. "Ep 450", "Episode 1200")
- *      and maps it to the correct era in the `genre` field:
- *      - Episodes 1-500 -> 'classic'
- *      - Episodes 501-1500 -> 'golden'
- *      - Episodes 1501+ -> 'modern'
- * 
- * 3. Bulk Write Operations:
- *    - Performs high-performance bulk upserts (`bulkWrite`) in MongoDB using `youtubeVideoId`
- *      as the unique key, ensuring no duplicate entries and minimal database roundtrips.
- * 
+ * 1. YouTube API Mode: Fetches all episodes from configured playlists via paginated
+ *    requests with timeouts, exponential-backoff retries, and safe incremental
+ *    reconciliation instead of destructive wipe-then-import.
+ * 2. Safe Reconciliation: Deletes only episodes whose youtubeVideoId was NOT found
+ *    in the current import run — never clears the entire collection upfront.
+ * 3. Smart Era Classification: Parses episode number from title and maps it to
+ *    correct era in the `genre` field (classic/golden/modern).
+ * 4. Bulk Upserts: Uses `bulkWrite` with upsert on unique `youtubeVideoId`.
+ * 5. Parallel Playlist Fetching: All playlists are fetched concurrently for speed.
+ *
  * Usage:
  *   node src/seeds/importEpisodes.js
  */
@@ -30,154 +23,172 @@ const mongoose = require('mongoose');
 const config = require('../config');
 const Episode = require('../models/Episode');
 
-// Sensible default official TMKOC YouTube Playlist IDs
-// Playlist 1: Episodes 1 - 1000
-// Playlist 2: Episodes 1001 - 2000
-// Playlist 3: Episodes 2001 - 3000
-// Playlist 4: Episodes 3001 - 4000
+// ── Constants ──
+
 const DEFAULT_PLAYLIST_IDS = [
-  'PLyBAqOWU1mfUGnBl8IMAcutxMeeHw1--p',
-  'PLyidjftviL2UKaKDxmfCPQF4taRL48qCA',
-  'PLyidjftviL2XhkUNofzpkLBgDQf5gAskA',
-  'PLyidjftviL2XcjaBpplhh6rWrumoArVQR',
+  'PLyBAqOWU1mfUGnBl8IMAcutxMeeHw1--p', // Episodes 1–1000
+  'PLyidjftviL2UKaKDxmfCPQF4taRL48qCA', // Episodes 1001–2000
+  'PLyidjftviL2XhkUNofzpkLBgDQf5gAskA', // Episodes 2001–3000
+  'PLyidjftviL2XcjaBpplhh6rWrumoArVQR', // Episodes 3001–4000
 ];
 
-// ── Fallback Rich Episode Catalog (Realistic TMKOC Episodes) ──
-const fallbackEpisodes = [
-  // Classic Era (1-500)
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 1 - Introducing Gokuldham',
-    genre: 'classic',
-    youtubeVideoId: 'rJE5jzi4q2Y',
-    thumbnailUrl: 'https://img.youtube.com/vi/rJE5jzi4q2Y/0.jpg',
-    durationSeconds: 1320,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 3 - Tapu Breaks Bhide\'s Window',
-    genre: 'classic',
-    youtubeVideoId: 'a1yH_6uP7qE',
-    thumbnailUrl: 'https://img.youtube.com/vi/a1yH_6uP7qE/0.jpg',
-    durationSeconds: 1280,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 20 - Jethalal Wakes Up Late',
-    genre: 'classic',
-    youtubeVideoId: 'XzD3dOa0b0g',
-    thumbnailUrl: 'https://img.youtube.com/vi/XzD3dOa0b0g/0.jpg',
-    durationSeconds: 1300,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 50 - Bhide Gets Angry at Tapu',
-    genre: 'classic',
-    youtubeVideoId: 'e1W4XqP8bK8',
-    thumbnailUrl: 'https://img.youtube.com/vi/e1W4XqP8bK8/0.jpg',
-    durationSeconds: 1350,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 100 - Gada Electronics Inauguration',
-    genre: 'classic',
-    youtubeVideoId: 'J_Vv9H5V-Z8',
-    thumbnailUrl: 'https://img.youtube.com/vi/J_Vv9H5V-Z8/0.jpg',
-    durationSeconds: 1290,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 350 - Gokuldham Cricket Match',
-    genre: 'classic',
-    youtubeVideoId: 'w7YhO9eP2q4',
-    thumbnailUrl: 'https://img.youtube.com/vi/w7YhO9eP2q4/0.jpg',
-    durationSeconds: 1310,
-  },
+const FETCH_TIMEOUT_MS = parseInt(process.env.YT_FETCH_TIMEOUT_MS, 10) || 30_000;
+const MAX_RETRIES = parseInt(process.env.YT_MAX_RETRIES, 10) || 3;
+const MAX_PAGES_PER_PLAYLIST = parseInt(process.env.YT_MAX_PAGES_PER_PLAYLIST, 10) || 80;
+const MAX_RESULTS_PER_PAGE = Math.min(parseInt(process.env.YT_PAGE_SIZE, 10) || 50, 50);
 
-  // Golden Era (501-1500)
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 600 - Jethalal in London Part 1',
-    genre: 'golden',
-    youtubeVideoId: 'rR9_3u7a7l0',
-    thumbnailUrl: 'https://img.youtube.com/vi/rR9_3u7a7l0/0.jpg',
-    durationSeconds: 1260,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 800 - Bhide\'s Sakharam Scooter Paint',
-    genre: 'golden',
-    youtubeVideoId: 'y8R9_3u7a7l',
-    thumbnailUrl: 'https://img.youtube.com/vi/y8R9_3u7a7l/0.jpg',
-    durationSeconds: 1280,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 1000 - Grand 1000th Episode Celebration',
-    genre: 'golden',
-    youtubeVideoId: 'dQw4w9WgXcQ', // Placeholder
-    thumbnailUrl: 'https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg',
-    durationSeconds: 1400,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 1250 - Jethalal Gets Stuck in Shop',
-    genre: 'golden',
-    youtubeVideoId: 'tP9sS7m6o1M',
-    thumbnailUrl: 'https://img.youtube.com/vi/tP9sS7m6o1M/0.jpg',
-    durationSeconds: 1300,
-  },
+// ── Helpers ──
 
-  // Modern Era (1501+)
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 1600 - Popatlal\'s Marriage Proposals',
-    genre: 'modern',
-    youtubeVideoId: 'h8lH3UoK3S0',
-    thumbnailUrl: 'https://img.youtube.com/vi/h8lH3UoK3S0/0.jpg',
-    durationSeconds: 1240,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 2000 - 2000th Episode Gala Night',
-    genre: 'modern',
-    youtubeVideoId: 'm8hS3tA6J2E',
-    thumbnailUrl: 'https://img.youtube.com/vi/m8hS3tA6J2E/0.jpg',
-    durationSeconds: 1380,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 2500 - Gokuldham New Year Bash',
-    genre: 'modern',
-    youtubeVideoId: 'o8hS3tA6J2E',
-    thumbnailUrl: 'https://img.youtube.com/vi/o8hS3tA6J2E/0.jpg',
-    durationSeconds: 1350,
-  },
-  {
-    title: 'Taarak Mehta Ka Ooltah Chashmah - Episode 3000 - Lockdown Stories in Gokuldham',
-    genre: 'modern',
-    youtubeVideoId: 'p8hS1tA6J2E',
-    thumbnailUrl: 'https://img.youtube.com/vi/p8hS1tA6J2E/0.jpg',
-    durationSeconds: 1420,
-  },
-];
-
-/**
- * Extracts the episode number from the title (e.g. "Episode 123" -> 123)
- * @param {string} title 
- * @returns {number|null}
- */
 function parseEpisodeNumber(title) {
   const match = title.match(/(?:ep|episode|ep\.)\s*(\d+)/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
-/**
- * Parses episode number from title and returns correct era (genre)
- * @param {string} title 
- * @returns {string} 'classic' | 'golden' | 'modern'
- */
 function classifyEraFromTitle(title) {
-  const episodeNum = parseEpisodeNumber(title);
-  if (episodeNum !== null) {
-    if (episodeNum <= 500) return 'classic';
-    if (episodeNum <= 1500) return 'golden';
+  const n = parseEpisodeNumber(title);
+  if (n !== null) {
+    if (n <= 500) return 'classic';
+    if (n <= 1500) return 'golden';
     return 'modern';
   }
-  // Default to classic if we can't extract the number
   return 'classic';
 }
 
 /**
- * Save fetched/generated episodes into MongoDB in bulk (safe bulk upserts)
- * @param {Array} episodesList 
+ * Delay helper for backoff.
+ */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fetch with timeout via AbortController.
+ */
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Exponential-backoff retry wrapper for a fetch.
+ * Retries on network errors, 429 (rate limit), and 5xx.
+ * Respects Retry-After header when present.
+ */
+async function fetchWithRetry(url, retriesLeft = MAX_RETRIES) {
+  for (let attempt = 0; attempt <= retriesLeft; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS);
+
+      if (res.ok) return res;
+
+      // Rate-limited — obey Retry-After or back off
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get('retry-after'), 10);
+        const delayMs = Number.isFinite(retryAfter)
+          ? retryAfter * 1000
+          : Math.min(1000 * 2 ** attempt + Math.random() * 1000, 60_000);
+        console.warn(`   ⚠️  Rate-limited (429), waiting ${Math.round(delayMs / 1000)}s...`);
+        await sleep(delayMs);
+        continue;
+      }
+
+      // Server errors
+      if (res.status >= 500) {
+        if (attempt < retriesLeft) {
+          const delayMs = Math.min(1000 * 2 ** attempt + Math.random() * 1000, 30_000);
+          console.warn(`   ⚠️  Server error ${res.status}, retrying in ${Math.round(delayMs / 1000)}s...`);
+          await sleep(delayMs);
+          continue;
+        }
+      }
+
+      // Non-retryable error
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error?.message || `YouTube API responded with status ${res.status}`);
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (attempt < retriesLeft) {
+          const delayMs = Math.min(1000 * 2 ** attempt + Math.random() * 1000, 30_000);
+          console.warn(`   ⚠️  Request timed out, retrying in ${Math.round(delayMs / 1000)}s...`);
+          await sleep(delayMs);
+          continue;
+        }
+        throw new Error('Request timed out after all retries');
+      }
+      if (attempt < retriesLeft && !err.message.startsWith('YouTube API')) {
+        const delayMs = Math.min(1000 * 2 ** attempt + Math.random() * 1000, 30_000);
+        console.warn(`   ⚠️  Network error: ${err.message}, retrying in ${Math.round(delayMs / 1000)}s...`);
+        await sleep(delayMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Exhausted all retries');
+}
+
+/**
+ * Fetch all pages from a single playlist.
+ */
+async function fetchPlaylistFromYouTube(apiKey, playlistId) {
+  const episodes = [];
+  let pageToken = '';
+  let pageCount = 0;
+
+  do {
+    pageCount++;
+    const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+    url.searchParams.set('part', 'snippet');
+    url.searchParams.set('maxResults', String(MAX_RESULTS_PER_PAGE));
+    url.searchParams.set('playlistId', playlistId);
+    url.searchParams.set('key', apiKey);
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+
+    const res = await fetchWithRetry(url.toString());
+    const data = await res.json();
+
+    const batch = (data.items || [])
+      .filter((item) => item.snippet?.resourceId?.videoId)
+      .map((item) => {
+        const title = item.snippet.title || '';
+        const videoId = item.snippet.resourceId.videoId;
+        const thumbnailUrl =
+          item.snippet.thumbnails?.maxres?.url ||
+          item.snippet.thumbnails?.high?.url ||
+          item.snippet.thumbnails?.medium?.url ||
+          `https://img.youtube.com/vi/${videoId}/0.jpg`;
+
+        return {
+          title,
+          genre: classifyEraFromTitle(title),
+          youtubeVideoId: videoId,
+          thumbnailUrl,
+          durationSeconds: 1200,
+          episodeNumber: parseEpisodeNumber(title),
+        };
+      });
+
+    episodes.push(...batch);
+    console.log(`   📥 Playlist ${playlistId} page ${pageCount}: ${batch.length} episodes`);
+
+    pageToken = data.nextPageToken || '';
+
+    if (pageCount >= MAX_PAGES_PER_PLAYLIST) {
+      console.warn(`   ⚠️  Reached page limit (${MAX_PAGES_PER_PLAYLIST}) for playlist ${playlistId}`);
+      break;
+    }
+  } while (pageToken);
+
+  return episodes;
+}
+
+/**
+ * Bulk upsert episodes into MongoDB.
+ * Returns count of written docs.
  */
 async function saveEpisodesToDb(episodesList) {
   if (episodesList.length === 0) return 0;
@@ -194,130 +205,66 @@ async function saveEpisodesToDb(episodesList) {
   return result.upsertedCount + result.modifiedCount;
 }
 
-/**
- * Fetch playlist items from YouTube Data API v3 (recursive pages)
- * @param {string} apiKey 
- * @param {string} playlistId 
- * @param {string} pageToken 
- * @returns {Promise<Array>} List of formatted episodes
- */
-async function fetchPlaylistFromYouTube(apiKey, playlistId, pageToken = '') {
-  const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
-  url.searchParams.set('part', 'snippet');
-  url.searchParams.set('maxResults', '50');
-  url.searchParams.set('playlistId', playlistId);
-  url.searchParams.set('key', apiKey);
-  if (pageToken) {
-    url.searchParams.set('pageToken', pageToken);
-  }
+// ── Main ──
 
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `YouTube API responded with status ${response.status}`);
-  }
-
-  const data = await response.json();
-  const items = data.items || [];
-  
-  // Format items to fit database schema
-  const episodes = items
-    .filter(item => item.snippet && item.snippet.resourceId?.videoId)
-    .map(item => {
-      const title = item.snippet.title || '';
-      const videoId = item.snippet.resourceId.videoId;
-      const thumbnailUrl = 
-        item.snippet.thumbnails?.maxres?.url ||
-        item.snippet.thumbnails?.high?.url ||
-        item.snippet.thumbnails?.medium?.url ||
-        `https://img.youtube.com/vi/${videoId}/0.jpg`;
-
-      return {
-        title,
-        genre: classifyEraFromTitle(title),
-        youtubeVideoId: videoId,
-        thumbnailUrl,
-        durationSeconds: 1200, // typical 20-minute episode estimation
-        episodeNumber: parseEpisodeNumber(title),
-      };
-    });
-
-  return {
-    episodes,
-    nextPageToken: data.nextPageToken || null,
-  };
-}
-
-/**
- * Main importer run method
- */
 const run = async () => {
   const apiKey = process.env.YOUTUBE_API_KEY;
-  
-  // Support comma-separated playlist IDs in env
+
   const envPlaylistId = process.env.YOUTUBE_PLAYLIST_ID;
   const playlistIds = envPlaylistId
-    ? envPlaylistId.split(',').map((id) => id.trim())
+    ? envPlaylistId.split(',').map((id) => id.trim()).filter(Boolean)
     : DEFAULT_PLAYLIST_IDS;
 
   try {
     console.log('🔄 Connecting to MongoDB...');
     await mongoose.connect(config.mongoUri);
-    console.log('✅ Connected to MongoDB successfully.');
+    console.log('✅ Connected to MongoDB.\n');
 
-    // Clear existing episodes for a fresh start
-    console.log('🧹 Clearing all existing episodes from database for a clean sync...');
-    await Episode.deleteMany({});
-    console.log('✅ Database cleared.');
+    if (!apiKey) {
+      console.error('❌ YOUTUBE_API_KEY is required. Set it in your .env file.');
+      console.log('   Get a key at: https://console.cloud.google.com/apis/credentials');
+      process.exit(1);
+    }
 
-    if (apiKey) {
-      console.log(`📡 YouTube API Key found. Processing ${playlistIds.length} playlist(s)...`);
-      let totalImported = 0;
+    // ── Fetch all episodes from all playlists in parallel ──
+    console.log(`📡 Fetching ${playlistIds.length} playlist(s) in parallel...`);
+    const results = await Promise.all(
+      playlistIds.map((pid) => fetchPlaylistFromYouTube(apiKey, pid))
+    );
 
-      for (const playlistId of playlistIds) {
-        console.log(`\n📺 Importing from playlist: ${playlistId}...`);
-        let nextPageToken = '';
-        let pageCount = 1;
+    const allEpisodes = results.flat();
+    console.log(`\n📊 Total episodes fetched: ${allEpisodes.length}`);
 
-        do {
-          console.log(`   📥 Fetching page ${pageCount} for playlist ${playlistId}...`);
-          const result = await fetchPlaylistFromYouTube(apiKey, playlistId, nextPageToken);
-          
-          if (result.episodes.length > 0) {
-            const written = await saveEpisodesToDb(result.episodes);
-            totalImported += written;
-            console.log(`   Processed ${result.episodes.length} episodes (Updated/Inserted: ${written})`);
-          }
+    if (allEpisodes.length === 0) {
+      console.log('⚠️  No episodes fetched — check your API key and playlist IDs.');
+      process.exit(0);
+    }
 
-          nextPageToken = result.nextPageToken;
-          pageCount++;
+    // ── Safe reconciliation: delete only episodes not in this import ──
+    const fetchedIds = allEpisodes.map((e) => e.youtubeVideoId);
+    const deleteResult = await Episode.deleteMany({ youtubeVideoId: { $nin: fetchedIds } });
+    console.log(`🧹 Removed ${deleteResult.deletedCount} stale episodes (no longer in playlists).`);
 
-          // Safety limit to avoid exhausting API quota during development/test
-          if (pageCount > 40) {
-            console.log('   ⚠️ Reached safety limit of 40 pages for this playlist. Moving on...');
-            break;
-          }
-        } while (nextPageToken);
-      }
+    // ── Bulk upsert ──
+    const written = await saveEpisodesToDb(allEpisodes);
+    console.log(`💾 Upserted/modified ${written} episodes in database.`);
 
-      console.log(`\n🎉 YouTube sync completed! Total unique episodes processed/updated across all playlists: ${totalImported}`);
+    // ── Final counts ──
+    const total = await Episode.countDocuments();
+    const byEra = await Episode.aggregate([
+      { $group: { _id: '$genre', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]);
 
-    } else {
-      console.log('💡 No YOUTUBE_API_KEY found in environment.');
-      console.log('🌱 Falling back to Local Fallback Mode (Seeding pre-defined TMKOC catalog)...');
-      
-      const preparedFallback = fallbackEpisodes.map((ep) => ({
-        ...ep,
-        episodeNumber: parseEpisodeNumber(ep.title),
-      }));
-
-      const written = await saveEpisodesToDb(preparedFallback);
-      console.log(`🎉 Local seeding completed! Seeded/Updated ${written} episodes across all eras (Classic, Golden, Modern).`);
+    console.log(`\n🎉 Import complete!`);
+    console.log(`   Total episodes in DB: ${total}`);
+    for (const era of byEra) {
+      console.log(`     • ${era._id}: ${era.count}`);
     }
 
     process.exit(0);
   } catch (err) {
-    console.error('❌ Importer execution failed:', err.message);
+    console.error('\n❌ Import failed:', err.message);
     process.exit(1);
   }
 };
