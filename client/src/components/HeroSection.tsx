@@ -117,7 +117,7 @@ export function HeroSection({ onGenerateClick }: HeroSectionProps) {
           {/* Inline Text Stats (No Cards) */}
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-8 mt-2 border-t border-ink/10 w-full max-w-lg">
             <div className="flex flex-col">
-              <span className="text-3xl sm:text-4xl font-black text-ink tracking-tight">1,700+</span>
+              <span className="text-3xl sm:text-4xl font-black text-ink tracking-tight">3,800+</span>
               <span className="text-[10px] sm:text-xs font-bold text-muted-text uppercase tracking-widest mt-1">Episodes</span>
             </div>
             <div className="w-px h-10 bg-ink/10 hidden sm:block" />
