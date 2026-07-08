@@ -52,17 +52,11 @@ export function useEpisodeGenerator() {
     setActiveEpisode(ep);
   }, [setActiveEpisode]);
 
-  const markEpisodeWatched = useEpisodeStore((state) => state.markEpisodeWatched);
-
   const handleEpisodeWatched = useCallback(() => {
-    // Remove the currently-playing episode from the visible deck.
-    // The cache is also invalidated so the next explicit fetch is fresh.
-    const ep = useEpisodeStore.getState().activeEpisode;
-    if (ep) {
-      markEpisodeWatched(ep.id);
-    }
+    // Invalidate the cache so the next explicit fetch returns fresh data.
+    // The current deck stays visible (cards are not removed).
     invalidateEpisodes();
-  }, [markEpisodeWatched, invalidateEpisodes]);
+  }, [invalidateEpisodes]);
 
   const eras = [
     { id: "all", name: "All Eras" },
