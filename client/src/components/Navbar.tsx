@@ -38,7 +38,7 @@ export function Navbar() {
                 className="object-cover scale-110"
               />
             </div>
-            <span className="font-display text-sm sm:text-base tracking-[-0.03em] text-ink font-bold group-hover:text-brand-cyan transition-colors">
+            <span className="font-display text-sm sm:text-base tracking-[-0.03em] text-ink font-bold group-hover:text-brand-cyan transition-colors whitespace-nowrap">
               Gokuldham Stream
             </span>
           </Link>
@@ -64,36 +64,39 @@ export function Navbar() {
           })}
         </div>
 
-        {/* Right: Auth Profile Cluster / Hamburger Toggle */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {isAuthenticated && user ? (
-            <div className="flex items-center gap-2 sm:gap-4">
-              {/* User Profile Capsule */}
-              <div className="bg-slate-100/60 border border-slate-200/40 rounded-full pl-1.5 pr-2.5 sm:pr-3 py-1 flex items-center gap-1.5 sm:gap-2 shadow-sm transition-all hover:scale-[1.01]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={user.avatarUrl || "/api/placeholder/32/32"}
-                  alt={user.name}
-                  className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border border-slate-200/20 object-cover"
-                />
-                <span className="text-[10px] sm:text-xs font-bold text-ink hidden min-[380px]:inline max-w-[80px] sm:max-w-[120px] truncate">
-                  {user.name}
-                </span>
+        {/* Right: Auth Profile Cluster & Hamburger Toggle */}
+        <div className="flex items-center gap-3">
+          {/* Desktop Auth Profile Cluster */}
+          <div className="hidden md:flex items-center gap-4">
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-4">
+                {/* User Profile Capsule */}
+                <div className="bg-slate-100/60 border border-slate-200/40 rounded-full pl-1.5 pr-3 py-1 flex items-center gap-2 shadow-sm transition-all hover:scale-[1.01]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={user.avatarUrl || "/api/placeholder/32/32"}
+                    alt={user.name}
+                    className="h-7 w-7 rounded-full border border-slate-200/20 object-cover"
+                  />
+                  <span className="text-xs font-bold text-ink max-w-[120px] truncate">
+                    {user.name}
+                  </span>
+                </div>
+                
+                {/* Sign Out Button */}
+                <button
+                  onClick={() => setShowSignOutModal(true)}
+                  className="text-xs font-bold text-brand-coral hover:text-red-700 transition-colors cursor-pointer"
+                >
+                  Sign out
+                </button>
               </div>
-              
-              {/* Sign Out Button */}
-              <button
-                onClick={() => setShowSignOutModal(true)}
-                className="text-[10px] sm:text-xs font-bold text-brand-coral hover:text-red-700 transition-colors cursor-pointer"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <GoogleSignInButton />
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center">
+                <GoogleSignInButton />
+              </div>
+            )}
+          </div>
 
           {/* Mobile Hamburger Menu Toggle */}
           <button
@@ -133,6 +136,38 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Mobile Auth Section */}
+            <div className="border-t border-slate-200/50 mt-2 pt-3 px-2 flex flex-col gap-3">
+              {isAuthenticated && user ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={user.avatarUrl || "/api/placeholder/32/32"}
+                      alt={user.name}
+                      className="h-8 w-8 rounded-full border border-slate-200/20 object-cover"
+                    />
+                    <span className="text-sm font-bold text-ink truncate max-w-[150px]">
+                      {user.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      setShowSignOutModal(true);
+                    }}
+                    className="text-sm font-bold text-brand-coral hover:text-red-700 transition-colors cursor-pointer"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-center py-1">
+                  <GoogleSignInButton onSuccess={() => setIsOpen(false)} />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </nav>
