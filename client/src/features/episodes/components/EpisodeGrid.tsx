@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart } from "lucide-react";
+import { FavButton } from "@/components/ui/fav-button";
 
 export interface Episode {
   id: string;
@@ -53,23 +53,15 @@ export function EpisodeGrid({
               
               {/* Heart Button Overlay */}
               {onToggleFavorite && (
-                <button
-                  type="button"
+                <FavButton
+                  isFav={isFav}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleFavorite(episode, isFav);
+                    if (onToggleFavorite) onToggleFavorite(episode, isFav);
                   }}
-                  className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all border shadow-sm ${
-                    isFav
-                      ? "bg-brand-coral/15 border-brand-coral/30 text-brand-coral"
-                      : "bg-black/40 border-white/10 text-white/80 hover:bg-black/60 hover:text-white"
-                  }`}
-                  aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${isFav ? "fill-brand-coral" : ""}`}
-                  />
-                </button>
+                  size="sm"
+                  className="absolute top-2 right-2"
+                />
               )}
             </div>
             <CardHeader className="p-4">

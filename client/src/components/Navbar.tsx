@@ -16,7 +16,7 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Generator", href: "/generate" },
+    { name: "Episode Finder", href: "/generate" },
     { name: "Favorites", href: "/favorites" },
     { name: "Watch History", href: "/history" },
   ];

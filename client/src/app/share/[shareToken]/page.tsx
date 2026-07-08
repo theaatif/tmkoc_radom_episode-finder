@@ -3,6 +3,9 @@
 import * as React from "react";
 import { useEffect, useState, useCallback, use } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { fetchSharedFavorites } from "@/features/episodes/episodes.api";
 import { EpisodeGrid, Episode } from "@/features/episodes/components/EpisodeGrid";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
@@ -16,6 +19,9 @@ interface SharePageProps {
 
 export default function SharePage({ params }: SharePageProps) {
   const { shareToken } = use(params);
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [showModal, setShowModal] = useState(false);
   const [ownerName, setOwnerName] = useState<string>("");
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,7 +41,6 @@ export default function SharePage({ params }: SharePageProps) {
       const data = await fetchSharedFavorites(shareToken, page, 12);
       setOwnerName(data.ownerName);
       
-      // Map API response to match client-side Episode interface structure
       const mappedEpisodes: Episode[] = data.favorites.map((ep: any) => ({
         id: ep.id,
         title: ep.title,
@@ -54,12 +59,49 @@ export default function SharePage({ params }: SharePageProps) {
   }, [shareToken]);
 
   useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setShowModal(true);
+    } else if (isAuthenticated) {
+      loadSharedFavorites(1);
+    }
+  }, [authLoading, isAuthenticated, loadSharedFavorites]);
+
+  const handleAuthSuccess = useCallback(() => {
+    setShowModal(false);
     loadSharedFavorites(1);
   }, [loadSharedFavorites]);
 
   const handlePageChange = (newPage: number) => {
     loadSharedFavorites(newPage);
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
+        <Spinner size="lg" className="border-t-brand-cyan" />
+        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
+          Verifying your session...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
+          <p className="text-sm font-medium text-muted-text">
+            Please sign in to view shared favorites.
+          </p>
+        </div>
+        <GetStartedModal
+          isOpen={showModal}
+          onClose={() => router.replace("/")}
+          onSuccess={handleAuthSuccess}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 bg-canvas min-h-screen">

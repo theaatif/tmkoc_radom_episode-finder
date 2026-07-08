@@ -100,19 +100,24 @@ export async function request<T>(
         }
       );
       if (!retryRes.ok) {
-        const body = await retryRes.json().catch(() => ({}));
+        const retryContentType = retryRes.headers.get("content-type");
+        const retryIsJson = retryContentType && retryContentType.includes("application/json");
+        const body = retryIsJson ? await retryRes.json().catch(() => ({})) : {};
         throw new Error(body?.error?.code ?? "unauthorized");
       }
-      return (retryRes.status === 204
-        ? null
-        : await retryRes.json()) as T;
+      const retryContentType = retryRes.headers.get("content-type");
+      const retryIsJson = retryContentType && retryContentType.includes("application/json");
+      return (retryIsJson ? await retryRes.json() : null) as T;
     }
   }
 
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = isJson ? await res.json().catch(() => ({})) : {};
     throw new Error(body?.error?.code ?? "unknown_error");
   }
 
-  return (res.status === 204 ? null : await res.json()) as T;
+  return (isJson ? await res.json() : null) as T;
 }
