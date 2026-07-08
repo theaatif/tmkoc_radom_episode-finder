@@ -1,7 +1,7 @@
 import * as React from "react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "cyan" | "yellow" | "dark" | "white" | "ghost";
+  variant?: "primary" | "secondary" | "cyan" | "yellow" | "dark" | "white" | "ghost" | "coral";
   size?: "sm" | "md" | "lg";
 }
 
@@ -25,6 +25,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       yellow: "bg-brand-yellow text-ink shadow-clay-yellow hover:scale-[1.02] border-0",
       dark: "bg-primary-cta text-brand-white shadow-clay-dark hover:scale-[1.02] border-0",
       white: "bg-brand-white text-ink border border-hairline shadow-clay-white hover:scale-[1.02]",
+      coral: "bg-brand-coral text-white shadow-clay-coral hover:scale-[1.02] border-0",
       
       ghost: "hover:bg-surface-soft text-ink bg-transparent",
     };

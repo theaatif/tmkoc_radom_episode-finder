@@ -90,6 +90,14 @@ async function createSession(googlePayload, ip) {
     REFRESH_TOKEN_TTL
   );
 
+  // Reverse index so refresh can be looked up with just the cookie (no access token needed)
+  await redis.set(
+    `refresh_idx:${hashedRefresh}`,
+    user._id.toString(),
+    'EX',
+    REFRESH_TOKEN_TTL
+  );
+
   return {
     accessToken,
     refreshToken,
@@ -217,8 +225,7 @@ const refreshSession = async (req, res, next) => {
 
     const hashedToken = hashToken(token);
 
-    // Extract userId from the (potentially expired) access token.
-    // The access token's signature is still verified — only expiration is ignored.
+    // Lookup userId: try access token first, then fallback to reverse index
     let userId = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -233,6 +240,11 @@ const refreshSession = async (req, res, next) => {
       } catch {
         // Signature invalid — cannot trust this token at all
       }
+    }
+
+    // Fallback: look up userId from the refresh token's reverse index
+    if (!userId) {
+      userId = await redis.get(`refresh_idx:${hashedToken}`);
     }
 
     if (!userId) {
@@ -255,6 +267,7 @@ const refreshSession = async (req, res, next) => {
     if (!safeCompare(storedData.hash, hashedToken)) {
       // Possible token replay attack — revoke the entire family
       await redis.del(`refresh:${userId}`);
+      await redis.del(`refresh_idx:${hashedToken}`);
       const ip = getClientIp(req);
       logger.security('token.replay_attack', { userId, ip, family: storedData.family });
       throw new ApiError(401, 'refresh_token_invalid_or_expired', 'Refresh token has been revoked');
@@ -265,6 +278,9 @@ const refreshSession = async (req, res, next) => {
     const newRefreshToken = generateRefreshToken();
     const newHashedRefresh = hashToken(newRefreshToken);
 
+    // Delete old reverse index before rotating
+    await redis.del(`refresh_idx:${hashedToken}`);
+
     await redis.set(
       `refresh:${userId}`,
       JSON.stringify({ hash: newHashedRefresh, family: storedData.family }),
@@ -272,11 +288,33 @@ const refreshSession = async (req, res, next) => {
       REFRESH_TOKEN_TTL
     );
 
+    // Set new reverse index
+    await redis.set(
+      `refresh_idx:${newHashedRefresh}`,
+      userId,
+      'EX',
+      REFRESH_TOKEN_TTL
+    );
+
     res.cookie('refreshToken', newRefreshToken, getRefreshCookieOptions());
+
+    // Fetch fresh user data for the client
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      throw new ApiError(401, 'refresh_token_invalid_or_expired', 'User not found');
+    }
 
     logger.info('auth.token_refreshed', { userId, ip: getClientIp(req) });
 
-    res.status(200).json({ accessToken: newAccessToken });
+    res.status(200).json({
+      accessToken: newAccessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+    });
   } catch (err) {
     if (err.name === 'ApiError') return next(err);
     next(err);
@@ -292,6 +330,12 @@ const logout = async (req, res, next) => {
   try {
     if (req.userId) {
       await redis.del(`refresh:${req.userId}`);
+      // Also clean reverse index if we have the refresh token cookie
+      const token = req.cookies?.refreshToken;
+      if (token && typeof token === 'string' && token.length <= 200) {
+        const hashedToken = hashToken(token);
+        await redis.del(`refresh_idx:${hashedToken}`);
+      }
       logger.security('auth.logout', { userId: req.userId, ip: getClientIp(req) });
     }
 

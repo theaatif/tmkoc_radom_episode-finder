@@ -3,9 +3,41 @@ const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
 const hpp = require('hpp');
-const mongoSanitize = require('express-mongo-sanitize');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
+
+/**
+ * Recursively sanitize an object against MongoDB injection ($ and . in keys).
+ * Express 5 made req.query read-only, so express-mongo-sanitize breaks.
+ * This inline version clones the object with sanitized keys instead of mutating.
+ */
+function sanitizeMongo(value) {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeMongo);
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [
+        key.replace(/^\$/, '_$').replace(/\./g, '_'),
+        sanitizeMongo(val),
+      ])
+    );
+  }
+  return value;
+}
+
+const mongoSanitize = (req, _res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    req.body = sanitizeMongo(req.body);
+  }
+  if (req.params && typeof req.params === 'object') {
+    for (const [k, v] of Object.entries(req.params)) {
+      req.params[k] = typeof v === 'string' ? v.replace(/\$/g, '_$').replace(/\./g, '_') : v;
+    }
+  }
+  // req.query is getter-only in Express 5 — skip reassigning it
+  next();
+};
 
 const config = require('./config');
 const errorHandler = require('./middleware/errorHandler');
@@ -130,19 +162,10 @@ app.use(cookieParser());
 // ──────────────────────────────────────────────
 app.use(hpp());
 
-// ──────────────────────────────────────────────
-// Sanitize user input against NoSQL injection
-// replaceWith replaces prohibited chars instead of stripping them,
-// which is more secure as it preserves string length (prevents bypass)
-// ──────────────────────────────────────────────
-app.use(
-  mongoSanitize({
-    replaceWith: '_',
-    onSanitize: ({ req, key }) => {
-      console.warn(`[SECURITY] Sanitized ${key} in ${req.method} ${req.originalUrl}`);
-    },
-  })
-);
+// Sanitize user input against NoSQL injection ($ and . in keys)
+// Inline middleware because express-mongo-sanitize attempts to reassign
+// req.query which is read-only in Express 5.
+app.use(mongoSanitize);
 
 // ──────────────────────────────────────────────
 // Request logging

@@ -1,5 +1,6 @@
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export function CtaBand() {
@@ -42,11 +43,11 @@ export function CtaBand() {
             Join thousands of active viewers! Log in utilizing Google OAuth 2.0 to begin your journey, filter out watched episodes, and track your complete progress.
           </p>
           <div className="pt-2 flex justify-center md:justify-start">
-            <a href="/generate">
+            <Link href="/generate">
               <Button variant="cyan" size="lg" className="px-8 font-bold">
                 Find Unseen Episode
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
 

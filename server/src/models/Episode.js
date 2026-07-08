@@ -18,6 +18,8 @@ const episodeSchema = new mongoose.Schema(
     youtubeVideoId: {
       type: String,
       required: [true, 'YouTube video ID is required'],
+      unique: true,
+      index: true,
       trim: true,
       maxlength: [20, 'YouTube video ID is too long'],
     },
@@ -30,6 +32,11 @@ const episodeSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: [0, 'Duration cannot be negative'],
+    },
+    episodeNumber: {
+      type: Number,
+      index: true,
+      default: null,
     },
   },
   {

@@ -4,7 +4,8 @@ import Image from "next/image";
 import * as React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { GoogleSignInButton } from "@/features/auth/components/GoogleSignInButton";
+import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 interface HeroSectionProps {
   onGenerateClick?: () => void;
@@ -12,9 +13,11 @@ interface HeroSectionProps {
 
 export function HeroSection({ onGenerateClick }: HeroSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   return (
     <section className="relative w-full min-h-[70vh] flex items-center justify-start overflow-hidden">
+
 
       {/* ═══ BACKGROUND: Full Screen Image ═══ */}
       <div className="absolute inset-0 z-0 bg-canvas">
@@ -99,7 +102,13 @@ export function HeroSection({ onGenerateClick }: HeroSectionProps) {
           {/* CTA Buttons */}
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <Button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                if (isAuthenticated) {
+                  onGenerateClick?.();
+                } else {
+                  setIsModalOpen(true);
+                }
+              }}
               variant="cyan"
               size="lg"
               className="text-sm sm:text-base px-8 sm:px-10 shadow-[0_8px_24px_rgba(0,172,192,0.3)]"
@@ -129,43 +138,14 @@ export function HeroSection({ onGenerateClick }: HeroSectionProps) {
       </div>
 
       {/* ═══ SIGN IN MODAL ═══ */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity cursor-pointer"
-            onClick={() => setIsModalOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-md bg-canvas rounded-[24px] sm:rounded-[32px] border border-ink/5 p-8 sm:p-10 shadow-2xl flex flex-col items-center text-center gap-6 overflow-hidden">
-
-            <button
-              className="absolute top-5 right-5 text-muted-text hover:text-ink transition-colors cursor-pointer"
-              onClick={() => setIsModalOpen(false)}
-              aria-label="Close modal"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <div className="h-16 w-16 rounded-[20px] bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center text-3xl">
-              🍿
-            </div>
-
-            <div>
-              <h3 className="font-display text-2xl text-ink font-semibold tracking-tight">
-                Get Started
-              </h3>
-              <p className="text-sm text-muted-text mt-2 leading-relaxed">
-                Sign in with Google to save your watch progress, unlock custom era filters, and enjoy seamless playback.
-              </p>
-            </div>
-
-            <div className="w-full pt-1 flex justify-center">
-              <GoogleSignInButton />
-            </div>
-          </div>
-        </div>
-      )}
+      <GetStartedModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          onGenerateClick?.();
+        }}
+      />
     </section>
   );
 }

@@ -10,14 +10,41 @@ export function getAccessToken() {
   return accessToken;
 }
 
+// Tiny in-memory CSRF token cache
+let csrfTokenPromise: Promise<string> | null = null;
+
+async function fetchCsrfToken(): Promise<string> {
+  const res = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/auth/csrf-token`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch CSRF token");
+  const data = await res.json();
+  return data.csrfToken;
+}
+
+export async function getCsrfToken(): Promise<string> {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetchCsrfToken().catch((err) => {
+      csrfTokenPromise = null;
+      throw err;
+    });
+  }
+  return csrfTokenPromise;
+}
+
 // In-memory token refresh mechanism
 async function refreshSession(): Promise<boolean> {
   try {
+    const csrfToken = await getCsrfToken();
     const res = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
     });
-    
+
     if (res.ok) {
       const data = await res.json();
       if (data.accessToken) {
@@ -32,9 +59,16 @@ async function refreshSession(): Promise<boolean> {
   return false;
 }
 
-export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+
+  const hasBody = options.body !== undefined && options.body !== null;
+  if (hasBody) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
@@ -42,6 +76,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   const res = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers,
   });
 
@@ -50,19 +85,27 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     const refreshed = await refreshSession();
     if (refreshed) {
       const retryHeaders = new Headers(options.headers);
-      retryHeaders.set("Content-Type", "application/json");
+      if (hasBody) {
+        retryHeaders.set("Content-Type", "application/json");
+      }
       if (accessToken) {
         retryHeaders.set("Authorization", `Bearer ${accessToken}`);
       }
-      const retryRes = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}${path}`, {
-        ...options,
-        headers: retryHeaders,
-      });
+      const retryRes = await fetch(
+        `${env.NEXT_PUBLIC_API_BASE_URL}${path}`,
+        {
+          ...options,
+          credentials: "include",
+          headers: retryHeaders,
+        }
+      );
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
         throw new Error(body?.error?.code ?? "unauthorized");
       }
-      return (retryRes.status === 204 ? null : await retryRes.json()) as T;
+      return (retryRes.status === 204
+        ? null
+        : await retryRes.json()) as T;
     }
   }
 

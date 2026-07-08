@@ -5,12 +5,14 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { GoogleSignInButton } from "@/features/auth/components/GoogleSignInButton";
+import { SignOutModal } from "@/features/auth/components/SignOutModal";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -20,8 +22,9 @@ export function Navbar() {
   ];
 
   return (
-    <div className="fixed top-4 left-0 right-0 z-40 w-full px-4 sm:px-6 md:px-8 pointer-events-none">
-      <nav className="pointer-events-auto max-w-7xl mx-auto h-16 bg-brand-white/80 backdrop-blur-xl border border-slate-200/50 rounded-full flex items-center justify-between px-4 sm:px-6 shadow-[inset_1px_1px_3px_rgba(255,255,255,0.9),_0_8px_24px_rgba(0,0,0,0.06)] relative">
+    <>
+      <div className="fixed top-4 left-0 right-0 z-40 w-full px-4 sm:px-6 md:px-8 pointer-events-none">
+        <nav className="pointer-events-auto max-w-7xl mx-auto h-16 bg-brand-white/80 backdrop-blur-xl border border-slate-200/50 rounded-full flex items-center justify-between px-4 sm:px-6 shadow-[inset_1px_1px_3px_rgba(255,255,255,0.9),_0_8px_24px_rgba(0,0,0,0.06)] relative">
         {/* Left: Branding & Jethiya Logo */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center gap-2 group">
@@ -80,8 +83,8 @@ export function Navbar() {
               
               {/* Sign Out Button */}
               <button
-                onClick={logout}
-                className="text-[10px] sm:text-xs font-bold text-muted-text hover:text-brand-coral transition-colors cursor-pointer"
+                onClick={() => setShowSignOutModal(true)}
+                className="text-[10px] sm:text-xs font-bold text-brand-coral hover:text-red-700 transition-colors cursor-pointer"
               >
                 Sign out
               </button>
@@ -133,6 +136,16 @@ export function Navbar() {
           </div>
         )}
       </nav>
-    </div>
+      </div>
+
+      <SignOutModal
+        isOpen={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        onConfirm={() => {
+          logout();
+          setShowSignOutModal(false);
+        }}
+      />
+    </>
   );
 }

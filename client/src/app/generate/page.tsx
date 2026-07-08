@@ -1,11 +1,58 @@
 "use client";
 
 import * as React from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { EpisodeGenerator } from "@/features/episodes/components/EpisodeGenerator";
 import { Footer } from "@/components/Footer";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function GeneratePage() {
+  const { isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
+
+  const handleAuthSuccess = useCallback(() => {
+    setShowModal(false);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      setShowModal(true);
+    }
+  }, [loading, isAuthenticated]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
+        <Spinner size="lg" className="border-t-brand-cyan" />
+        <p className="text-sm font-medium text-muted-text mt-4 animate-pulse">
+          Verifying your session...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-canvas">
+          <p className="text-sm font-medium text-muted-text">
+            Please sign in to access the generator.
+          </p>
+        </div>
+        <GetStartedModal
+          isOpen={showModal}
+          onClose={() => router.replace("/")}
+          onSuccess={handleAuthSuccess}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col flex-1 bg-canvas">
       {/* Main Workspace Area */}
