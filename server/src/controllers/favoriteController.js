@@ -53,11 +53,13 @@ const removeFavorite = async (req, res, next) => {
 };
 
 /**
- * GET /favorites?page=1&limit=20
+ * GET /favorites?page=1&limit=20&idsOnly=true
  * Lists the current user's favorites with pagination.
+ * Pass idsOnly=true for a lightweight response with only episode IDs.
  */
 const getFavorites = async (req, res, next) => {
   try {
+    const idsOnly = req.query.idsOnly === 'true';
     const page = Math.max(1, parseInt(req.query.page, 10) || DEFAULT_PAGE);
     const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
@@ -67,21 +69,26 @@ const getFavorites = async (req, res, next) => {
         .sort({ addedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('episodeId', 'title genre thumbnailUrl youtubeVideoId')
+        .populate(idsOnly ? [] : [{ path: 'episodeId', select: 'title genre thumbnailUrl youtubeVideoId' }])
         .lean(),
       Favorite.countDocuments({ userId: req.userId }),
     ]);
 
     const episodes = favorites
-      .filter((f) => f.episodeId) // guard against deleted episodes
-      .map((f) => ({
-        id: f.episodeId._id,
-        title: f.episodeId.title,
-        genre: f.episodeId.genre,
-        thumbnailUrl: f.episodeId.thumbnailUrl,
-        youtubeVideoId: f.episodeId.youtubeVideoId,
-        addedAt: f.addedAt,
-      }));
+      .filter((f) => idsOnly ? f.episodeId : f.episodeId)
+      .map((f) => {
+        if (idsOnly) {
+          return { id: (f.episodeId?._id || f.episodeId).toString(), addedAt: f.addedAt };
+        }
+        return {
+          id: f.episodeId._id,
+          title: f.episodeId.title,
+          genre: f.episodeId.genre,
+          thumbnailUrl: f.episodeId.thumbnailUrl,
+          youtubeVideoId: f.episodeId.youtubeVideoId,
+          addedAt: f.addedAt,
+        };
+      });
 
     res.status(200).json({
       favorites: episodes,
@@ -120,7 +127,7 @@ const getSharedFavorites = async (req, res, next) => {
         .sort({ addedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('episodeId', 'title genre thumbnailUrl')
+        .populate('episodeId', 'title genre thumbnailUrl youtubeVideoId')
         .lean(),
       Favorite.countDocuments({ userId: user._id }),
     ]);
@@ -128,9 +135,11 @@ const getSharedFavorites = async (req, res, next) => {
     const episodes = favorites
       .filter((f) => f.episodeId)
       .map((f) => ({
+        id: f.episodeId._id,
         title: f.episodeId.title,
         genre: f.episodeId.genre,
         thumbnailUrl: f.episodeId.thumbnailUrl,
+        youtubeVideoId: f.episodeId.youtubeVideoId,
       }));
 
     res.status(200).json({

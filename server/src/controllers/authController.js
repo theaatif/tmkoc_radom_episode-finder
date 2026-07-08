@@ -106,6 +106,7 @@ async function createSession(googlePayload, ip) {
       name: user.name,
       email: user.email,
       avatarUrl: user.avatarUrl,
+      shareToken: user.shareToken,
     },
   };
 }
@@ -313,6 +314,7 @@ const refreshSession = async (req, res, next) => {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        shareToken: user.shareToken,
       },
     });
   } catch (err) {

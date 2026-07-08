@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Heart } from "lucide-react";
 
 export interface Episode {
   id: string;
@@ -14,9 +15,16 @@ export interface Episode {
 interface EpisodeGridProps {
   episodes: Episode[];
   onSelectEpisode: (episode: Episode) => void;
+  favoritedIds?: Set<string>;
+  onToggleFavorite?: (episode: Episode, isFav: boolean) => void;
 }
 
-export function EpisodeGrid({ episodes, onSelectEpisode }: EpisodeGridProps) {
+export function EpisodeGrid({
+  episodes,
+  onSelectEpisode,
+  favoritedIds = new Set(),
+  onToggleFavorite,
+}: EpisodeGridProps) {
   if (episodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center text-zinc-500">
@@ -27,28 +35,54 @@ export function EpisodeGrid({ episodes, onSelectEpisode }: EpisodeGridProps) {
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {episodes.map((episode) => (
-        <Card
-          key={episode.id}
-          className="cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md"
-          onClick={() => onSelectEpisode(episode)}
-        >
-          <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={episode.thumbnailUrl || "/api/placeholder/400/225"}
-              alt={episode.title}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <CardHeader className="p-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              {episode.genre}
-            </span>
-            <CardTitle className="mt-1 text-base line-clamp-2">{episode.title}</CardTitle>
-          </CardHeader>
-        </Card>
-      ))}
+      {episodes.map((episode) => {
+        const isFav = favoritedIds.has(episode.id);
+        return (
+          <Card
+            key={episode.id}
+            className="cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md border border-hairline bg-surface-card hover:bg-brand-white relative group"
+            onClick={() => onSelectEpisode(episode)}
+          >
+            <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={episode.thumbnailUrl || `https://img.youtube.com/vi/${episode.youtubeVideoId}/0.jpg`}
+                alt={episode.title}
+                className="h-full w-full object-cover"
+              />
+              
+              {/* Heart Button Overlay */}
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(episode, isFav);
+                  }}
+                  className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all border shadow-sm ${
+                    isFav
+                      ? "bg-brand-coral/15 border-brand-coral/30 text-brand-coral"
+                      : "bg-black/40 border-white/10 text-white/80 hover:bg-black/60 hover:text-white"
+                  }`}
+                  aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                >
+                  <Heart
+                    className={`h-4 w-4 ${isFav ? "fill-brand-coral" : ""}`}
+                  />
+                </button>
+              )}
+            </div>
+            <CardHeader className="p-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-text">
+                {episode.genre}
+              </span>
+              <CardTitle className="mt-1 text-base line-clamp-2 leading-snug font-bold text-ink">
+                {episode.title}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        );
+      })}
     </div>
   );
 }

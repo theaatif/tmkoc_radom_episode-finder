@@ -3,14 +3,18 @@
 import * as React from "react";
 import { useState } from "react";
 import { useRandomEpisodes } from "@/features/episodes/hooks/useRandomEpisodes";
+import { useFavorites } from "@/features/episodes/hooks/useFavorites";
+import { fetchFavoriteIds } from "@/features/episodes/episodes.api";
 import { EpisodeGrid, Episode } from "@/features/episodes/components/EpisodeGrid";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useEffect } from "react";
 
 export function EpisodeGenerator() {
   const [selectedEra, setSelectedEra] = useState<string>("all");
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null);
+  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
 
   const {
     episodes,
@@ -19,6 +23,27 @@ export function EpisodeGenerator() {
     isExhausted,
     fetchEpisodes,
   } = useRandomEpisodes();
+
+  const { toggleFavorite } = useFavorites();
+
+  // Lightweight fetch: only episode IDs for heart icon state
+  useEffect(() => {
+    fetchFavoriteIds().then(setFavoritedIds).catch(() => {});
+  }, []);
+
+  const handleToggleFavorite = async (episode: Episode, isFav: boolean) => {
+    try {
+      await toggleFavorite(episode, isFav);
+      setFavoritedIds((prev) => {
+        const next = new Set(prev);
+        if (isFav) next.delete(episode.id);
+        else next.add(episode.id);
+        return next;
+      });
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
 
   const eras = [
     { id: "all", name: "All Eras" },
@@ -128,6 +153,8 @@ export function EpisodeGenerator() {
             <EpisodeGrid
               episodes={episodes}
               onSelectEpisode={(ep) => setActiveEpisode(ep)}
+              favoritedIds={favoritedIds}
+              onToggleFavorite={handleToggleFavorite}
             />
           </div>
         ) : (

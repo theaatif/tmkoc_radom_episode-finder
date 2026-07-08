@@ -18,6 +18,67 @@ export async function markWatched(episodeId: string): Promise<void> {
   });
 }
 
-export async function fetchWatchHistory(): Promise<Episode[]> {
-  return request<Episode[]>("/episodes/history");
+export interface HistoryResponse {
+  episodes: (Episode & { watchedAt: string })[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
+
+export async function fetchWatchHistory(page = 1, limit = 20): Promise<HistoryResponse> {
+  return request<HistoryResponse>(`/episodes/history?page=${page}&limit=${limit}`);
+}
+
+export interface FavoritesResponse {
+  favorites: Episode[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface SharedFavoritesResponse {
+  ownerName: string;
+  favorites: { title: string; genre: string; thumbnailUrl: string }[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export async function fetchFavorites(page = 1, limit = 20): Promise<FavoritesResponse> {
+  return request<FavoritesResponse>(`/favorites?page=${page}&limit=${limit}`);
+}
+
+export async function addFavorite(episodeId: string): Promise<void> {
+  return request<void>(`/favorites/${encodeURIComponent(episodeId)}`, {
+    method: "POST",
+  });
+}
+
+export async function removeFavorite(episodeId: string): Promise<void> {
+  return request<void>(`/favorites/${encodeURIComponent(episodeId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function fetchSharedFavorites(shareToken: string, page = 1, limit = 20): Promise<SharedFavoritesResponse> {
+  return request<SharedFavoritesResponse>(`/share/${encodeURIComponent(shareToken)}?page=${page}&limit=${limit}`);
+}
+
+/**
+ * Lightweight fetch of only favorited episode IDs — avoids loading full
+ * episode objects just to render heart icons on the generator page.
+ */
+export async function fetchFavoriteIds(): Promise<Set<string>> {
+  const data = await request<FavoritesResponse>("/favorites?limit=200&idsOnly=true");
+  return new Set(data.favorites.map((f) => f.id));
+}
+

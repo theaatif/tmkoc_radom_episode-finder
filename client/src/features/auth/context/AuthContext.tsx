@@ -9,6 +9,7 @@ export interface User {
   name: string;
   email: string;
   avatarUrl: string;
+  shareToken: string;
 }
 
 interface AuthContextValue {
