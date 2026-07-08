@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: gokuldham-stream-server
+    runtime: node
+    repo: https://github.com/theaatif/tmkoc_radom_episode-finder
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # Set this manually in Render dashboard (e.g., MongoDB Atlas URI)
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: gokuldham-redis
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true # Render will generate a cryptographically secure random key
+      - key: JWT_REFRESH_SECRET
+        generateValue: true # Render will generate a cryptographically secure random key
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: GOOGLE_CLIENT_ID
+        sync: false # Set your Google OAuth Client ID manually
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false # Set your Google OAuth Client Secret manually
+      - key: CLIENT_URL
+        sync: false # Set to your deployed frontend URL (e.g., Vercel or Netlify)
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: REQUEST_TIMEOUT_MS
+        value: "30000"
+
+databases: []
+
+# Free tier Redis instance managed by Render
+redis:
+  - name: gokuldham-redis
+    plan: free
+    ipAllowList: [] # Restrict access to internal services within Render only

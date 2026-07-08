@@ -17,6 +17,20 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TMKOC Random Episode Player",
   description: "Generate and discover random unseen episodes of Taarak Mehta Ka Ooltah Chashmah",
+  openGraph: {
+    title: "TMKOC Random Episode Player",
+    description: "Break free from YouTube's algorithm. Track your watch history and discover random unseen TMKOC episodes.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TMKOC Random Episode Player",
+    description: "Discover random unseen episodes of Taarak Mehta Ka Ooltah Chashmah",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

@@ -10,13 +10,24 @@ interface ShareFavoritesButtonProps {
 export function ShareFavoritesButton({ shareToken }: ShareFavoritesButtonProps) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopyShareLink = () => {
+  const handleCopyShareLink = async () => {
     if (!shareToken) return;
     const shareUrl = `${window.location.origin}/share/${shareToken}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      // Fallback for non-HTTPS or older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (

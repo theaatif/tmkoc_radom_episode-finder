@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from "react";
 import { useEpisodeStore } from "../store/episodeStore";
 import { Episode } from "../components/EpisodeGrid";
-
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { logger } from "@/lib/logger";
 
 export function useEpisodeGenerator() {
   const { isAuthenticated } = useAuth();
@@ -39,7 +39,7 @@ export function useEpisodeGenerator() {
     try {
       await toggleFavorite(episode, isFav);
     } catch (err) {
-      console.error("Failed to toggle favorite:", err);
+      logger.error("Failed to toggle favorite:", err);
     }
   };
 
@@ -53,8 +53,8 @@ export function useEpisodeGenerator() {
   }, [setActiveEpisode]);
 
   const handleEpisodeWatched = useCallback(() => {
-    // Keep episodes and cache intact so closing the player preserves the old screen state
-  }, []);
+    invalidateEpisodes();
+  }, [invalidateEpisodes]);
 
   const eras = [
     { id: "all", name: "All Eras" },

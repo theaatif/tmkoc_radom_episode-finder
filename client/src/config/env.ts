@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const envSchema = z.object({
   NEXT_PUBLIC_API_BASE_URL: z.string().url().default("http://localhost:5000/api"),
@@ -11,7 +12,7 @@ const result = envSchema.safeParse({
 });
 
 if (!result.success) {
-  console.error("❌ Invalid environment variables:", result.error.format());
+  logger.error("Invalid environment variables:", result.error.format());
   throw new Error("Invalid environment variables");
 }
 

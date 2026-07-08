@@ -20,6 +20,7 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 import "swiper/css";
+import styles from "./EpisodeCardsDeck.module.css";
 
 interface EpisodeCardsDeckProps {
   episodes: Episode[];
@@ -48,15 +49,8 @@ export function EpisodeCardsDeck({
     });
   }, [api]);
 
-  const css = `
-  .swiper-slide-shadow {
-    border-radius: 24px !important;
-  }
-  `;
-
   return (
-    <div className="w-full relative">
-      <style>{css}</style>
+    <div className={`w-full relative ${styles.deck}`}>
 
       {/* 1. Mobile Screen: Swiper Stack (Tactile 3D Card deck) */}
       <div className="flex md:hidden flex-col items-center justify-center py-4 w-full">

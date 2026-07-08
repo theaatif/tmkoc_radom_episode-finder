@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { FavButton } from "@/components/ui/fav-button";
 import { Play } from "lucide-react";
+import { getMasonryCardStyling } from "@/lib/utils";
 
 export interface HistoryEpisode {
   id: string;
@@ -110,40 +111,6 @@ type ColumnProps = {
   onSelectEpisode: (episode: { id: string; youtubeVideoId: string }) => void;
 };
 
-// Generates highly random but stable styles based on ID hashing (Aspect ratio, Margin stagger, Hover micro-rotations)
-function getCardStyling(episodeId: string) {
-  let hash = 0;
-  for (let i = 0; i < episodeId.length; i++) {
-    hash = episodeId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const absHash = Math.abs(hash);
-  
-  // Aspect ratio presets (6 levels of height)
-  const aspectMod = absHash % 6;
-  let aspectClass = "aspect-[3/4.2]";
-  if (aspectMod === 0) aspectClass = "aspect-[3/3.4]";
-  else if (aspectMod === 1) aspectClass = "aspect-[3/3.8]";
-  else if (aspectMod === 2) aspectClass = "aspect-[3/4.2]";
-  else if (aspectMod === 3) aspectClass = "aspect-[3/4.6]";
-  else if (aspectMod === 4) aspectClass = "aspect-[3/5.0]";
-  else if (aspectMod === 5) aspectClass = "aspect-[3/5.4]";
-
-  // Vertical margin offsets to stagger alignment
-  const marginMod = absHash % 4;
-  let marginClass = "";
-  if (marginMod === 1) marginClass = "mt-3";
-  else if (marginMod === 2) marginClass = "mt-6";
-  else if (marginMod === 3) marginClass = "mt-9";
-
-  // Micro hover tilt
-  const rotateMod = absHash % 3;
-  let rotateClass = "";
-  if (rotateMod === 1) rotateClass = "hover:rotate-[0.8deg]";
-  else if (rotateMod === 2) rotateClass = "hover:-rotate-[0.8deg]";
-
-  return `${aspectClass} ${marginClass} ${rotateClass}`;
-}
-
 const Column = ({
   episodes,
   favoritedIds,
@@ -156,7 +123,7 @@ const Column = ({
     <div className="flex flex-col gap-6 w-full">
       {episodes.map((episode) => {
         const isFav = favoritedIds.has(episode.id);
-        const stylingClasses = getCardStyling(episode.id);
+        const stylingClasses = getMasonryCardStyling(episode.id);
         
         return (
           <div
@@ -216,7 +183,7 @@ const Column = ({
             )}
 
             {/* Play Button Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-15">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-10">
               <div className="h-12 w-12 rounded-full bg-brand-white/95 text-ink flex items-center justify-center shadow-lg transform scale-75 group-hover/card:scale-100 transition-transform duration-300">
                 <Play className="h-5 w-5 fill-ink text-ink ml-0.5" />
               </div>

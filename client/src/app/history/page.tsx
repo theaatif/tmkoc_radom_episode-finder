@@ -15,6 +15,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/episodes/hooks/useFavorites";
 import { fetchFavoriteIds } from "@/features/episodes/episodes.api";
+import { logger } from "@/lib/logger";
 
 export default function HistoryPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -50,7 +51,7 @@ export default function HistoryPage() {
         return next;
       });
     } catch (err) {
-      console.error("Failed to toggle favorite:", err);
+      logger.error("Failed to toggle favorite:", err);
     }
   };
 

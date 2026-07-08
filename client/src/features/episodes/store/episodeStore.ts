@@ -8,6 +8,7 @@ import {
   addFavorite,
   removeFavorite,
 } from "../episodes.api";
+import { logger } from "@/lib/logger";
 
 interface EpisodeState {
   selectedEra: string;
@@ -51,7 +52,7 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
       const ids = await fetchFavoriteIds();
       set({ favoritedIds: ids });
     } catch (err) {
-      console.error("Failed to fetch favorite IDs:", err);
+      logger.error("Failed to fetch favorite IDs:", err);
     }
   },
 
@@ -73,7 +74,7 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
         });
       }
     } catch (err) {
-      console.error("Failed to toggle favorite:", err);
+      logger.error("Failed to toggle favorite:", err);
       throw err;
     }
   },

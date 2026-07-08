@@ -15,6 +15,7 @@ import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { SessionLoader } from "@/components/ui/session-loader";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/logger";
 
 export default function FavoritesPage() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
@@ -48,7 +49,7 @@ export default function FavoritesPage() {
     try {
       await toggleFavorite(episode, isFav);
     } catch (err) {
-      console.error("Failed to toggle favorite:", err);
+      logger.error("Failed to toggle favorite:", err);
     }
   };
 

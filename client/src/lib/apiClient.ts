@@ -1,4 +1,5 @@
 import { env } from "@/config/env";
+import { logger } from "@/lib/logger";
 
 let accessToken: string | null = null;
 
@@ -53,7 +54,7 @@ async function refreshSession(): Promise<boolean> {
       }
     }
   } catch (error) {
-    console.error("Token refresh failed:", error);
+    logger.error("Token refresh failed:", error);
   }
   setAccessToken(null);
   return false;
