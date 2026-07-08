@@ -126,6 +126,7 @@ const getSharedFavorites = async (req, res, next) => {
     }
 
     const page = Math.max(1, parseInt(req.query.page, 10) || DEFAULT_PAGE);
+    const idsOnly = false;
     const maxLimit = idsOnly ? MAX_LIMIT_IDS : MAX_LIMIT_FULL;
     const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
