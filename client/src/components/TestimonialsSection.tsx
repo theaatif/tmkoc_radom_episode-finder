@@ -22,7 +22,7 @@ interface TestimonialCardProps {
 
 export function TestimonialCard({ avatar, name, role, quote }: TestimonialCardProps) {
   return (
-    <div className="bg-brand-white border border-slate-200/50 p-8 rounded-clay-lg flex flex-col justify-between h-full shadow-[0_8px_30px_rgba(0,0,0,0.04)] select-none text-left">
+    <div className="bg-brand-white border border-slate-200/50 p-6 sm:p-8 rounded-clay-lg flex flex-col justify-between h-full shadow-[0_8px_30px_rgba(0,0,0,0.04)] select-none text-left">
       <div className="flex-1 flex flex-col justify-center">
         <span className="text-4xl text-brand-cyan/25 font-serif leading-none select-none">“</span>
         <p className="text-sm text-body leading-relaxed -mt-2 font-normal">
@@ -79,10 +79,16 @@ export function TestimonialsSection() {
     }
     
     .TestimonialsSwiper .swiper-slide {
-      width: 330px;
+      width: 280px;
       height: 320px;
       opacity: 0.55;
       transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    @media (min-width: 640px) {
+      .TestimonialsSwiper .swiper-slide {
+        width: 330px;
+      }
     }
 
     .TestimonialsSwiper .swiper-slide-active {
@@ -119,7 +125,7 @@ export function TestimonialsSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.4 }}
-        className="relative w-full max-w-5xl mx-auto px-10"
+        className="relative w-full max-w-5xl mx-auto px-4 sm:px-10"
       >
         <Swiper
           spaceBetween={16}
@@ -157,7 +163,7 @@ export function TestimonialsSection() {
         </Swiper>
 
         {/* Navigation Controls */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10 flex justify-between pointer-events-none px-2 sm:px-4">
+        <div className="hidden sm:flex absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10 justify-between pointer-events-none px-2 sm:px-4">
           <button className="swiper-button-prev-custom pointer-events-auto h-10 w-10 rounded-full bg-brand-white border border-slate-200/50 shadow-md flex items-center justify-center text-ink hover:text-brand-cyan hover:scale-105 active:scale-95 transition-all cursor-pointer">
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
