@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { Favorite, Episode, User } = require('../models');
+const { nanoid } = require('nanoid');
+const { Favorite, Episode, User, SharedPlaylist } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 // Pagination defaults and limits
@@ -7,6 +8,10 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT_IDS = 1000;   // lightweight — only ObjectIds
 const MAX_LIMIT_FULL = 200;   // full populate — heavier payload
+
+// Shared playlist limits
+const MAX_SNAPSHOT_EPISODES = 2000;   // cap episodes per snapshot
+const MAX_SNAPSHOTS_PER_USER = 50;    // max snapshots per user
 
 /**
  * POST /favorites/:episodeId
@@ -112,15 +117,114 @@ const getFavorites = async (req, res, next) => {
 };
 
 /**
- * GET /share/:shareToken
- * Public — returns a user's favorites by their opaque shareToken.
+ * POST /share
+ * Auth required — snapshots the current user's favorites into a
+ * SharedPlaylist and returns a playlistId for the share link.
+ * Enforces per-user snapshot cap and auto-purges oldest on overflow.
+ */
+const createSharedPlaylist = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+
+    const [user, favorites] = await Promise.all([
+      User.findById(userId).lean(),
+      Favorite.find({ userId })
+        .sort({ addedAt: -1 })
+        .select('episodeId -_id')
+        .lean(),
+    ]);
+
+    if (!user) {
+      throw new ApiError(404, 'user_not_found', 'User not found');
+    }
+
+    const episodeIds = favorites
+      .map((f) => f.episodeId)
+      .filter(Boolean)
+      .slice(0, MAX_SNAPSHOT_EPISODES);
+
+    const playlistId = nanoid(12);
+
+    await SharedPlaylist.create({
+      playlistId,
+      userId,
+      episodeIds,
+      ownerName: user.name,
+    });
+
+    // Enforce per-user cap — delete oldest snapshots beyond limit
+    const excess = await SharedPlaylist.countDocuments({ userId }) - MAX_SNAPSHOTS_PER_USER;
+    if (excess > 0) {
+      const oldest = await SharedPlaylist.find({ userId })
+        .sort({ createdAt: 1 })
+        .limit(excess)
+        .select('_id')
+        .lean();
+      await SharedPlaylist.deleteMany({ _id: { $in: oldest.map((s) => s._id) } });
+    }
+
+    res.status(201).json({ playlistId });
+  } catch (err) {
+    if (err.name === 'ApiError') return next(err);
+    next(err);
+  }
+};
+
+/**
+ * GET /share/:id
+ * Public — returns a shared playlist by playlistId (snapshot) or falls
+ * back to a live favorites view by user shareToken.
  * Paginated and guarded against deleted episodes.
  */
 const getSharedFavorites = async (req, res, next) => {
   try {
-    const { shareToken } = req.params;
+    const { id } = req.params;
 
-    const user = await User.findOne({ shareToken }).lean();
+    // Try snapshot playlist first
+    const playlist = await SharedPlaylist.findOne({ playlistId: id }).lean();
+    if (playlist) {
+      const page = Math.max(1, parseInt(req.query.page, 10) || DEFAULT_PAGE);
+      const limit = Math.min(MAX_LIMIT_FULL, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
+      const skip = (page - 1) * limit;
+
+      const episodeMap = await Episode.find({ _id: { $in: playlist.episodeIds } })
+        .select('title genre thumbnailUrl youtubeVideoId')
+        .lean()
+        .then((eps) =>
+          eps.reduce((map, ep) => {
+            map[ep._id.toString()] = ep;
+            return map;
+          }, {})
+        );
+
+      // Preserve original snapshot order, skip deleted episodes
+      const ordered = playlist.episodeIds
+        .map((eid) => episodeMap[eid.toString()])
+        .filter(Boolean);
+
+      const total = ordered.length;
+      const paginatedEpisodes = ordered.slice(skip, skip + limit).map((ep) => ({
+        id: ep._id,
+        title: ep.title,
+        genre: ep.genre,
+        thumbnailUrl: ep.thumbnailUrl,
+        youtubeVideoId: ep.youtubeVideoId,
+      }));
+
+      return res.status(200).json({
+        ownerName: playlist.ownerName,
+        favorites: paginatedEpisodes,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    }
+
+    // Fallback: user shareToken (live favorites)
+    const user = await User.findOne({ shareToken: id }).lean();
     if (!user) {
       throw new ApiError(404, 'share_link_not_found', 'Share link not found');
     }
@@ -167,4 +271,4 @@ const getSharedFavorites = async (req, res, next) => {
   }
 };
 
-module.exports = { addFavorite, removeFavorite, getFavorites, getSharedFavorites };
+module.exports = { addFavorite, removeFavorite, getFavorites, getSharedFavorites, createSharedPlaylist };

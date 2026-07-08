@@ -16,14 +16,14 @@ const favoritesQuery = z.object({
 });
 
 /**
- * GET /share/:shareToken — shareToken must be a non-empty alphanumeric string.
+ * GET /share/:id — alphanumeric string (playlistId or shareToken).
  */
 const shareParams = z.object({
-  shareToken: z
+  id: z
     .string()
-    .min(1, 'shareToken is required')
-    .max(30, 'shareToken is too long')
-    .regex(/^[A-Za-z0-9_-]+$/, 'shareToken contains invalid characters'),
+    .min(1, 'id is required')
+    .max(30, 'id is too long')
+    .regex(/^[A-Za-z0-9_-]+$/, 'id contains invalid characters'),
 });
 
 /**
@@ -33,4 +33,9 @@ const shareQuery = z.object({
   ...paginationQuery,
 });
 
-module.exports = { favoriteParams, favoritesQuery, shareParams, shareQuery };
+/**
+ * POST /share — no body expected, but validate against empty/malformed payload.
+ */
+const createShareBody = z.object({}).strict();
+
+module.exports = { favoriteParams, favoritesQuery, shareParams, shareQuery, createShareBody };

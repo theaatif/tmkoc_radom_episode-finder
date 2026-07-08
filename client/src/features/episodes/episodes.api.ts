@@ -69,8 +69,16 @@ export async function removeFavorite(episodeId: string): Promise<void> {
   });
 }
 
-export async function fetchSharedFavorites(shareToken: string, page = 1, limit = 20): Promise<SharedFavoritesResponse> {
-  return request<SharedFavoritesResponse>(`/share/${encodeURIComponent(shareToken)}?page=${page}&limit=${limit}`);
+export interface CreateSharedPlaylistResponse {
+  playlistId: string;
+}
+
+export async function createSharedPlaylist(): Promise<CreateSharedPlaylistResponse> {
+  return request<CreateSharedPlaylistResponse>('/share', { method: 'POST' });
+}
+
+export async function fetchSharedFavorites(shareId: string, page = 1, limit = 20): Promise<SharedFavoritesResponse> {
+  return request<SharedFavoritesResponse>(`/share/${encodeURIComponent(shareId)}?page=${page}&limit=${limit}`);
 }
 
 /**

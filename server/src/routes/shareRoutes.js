@@ -1,12 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { getSharedFavorites } = require('../controllers/favoriteController');
+const { getSharedFavorites, createSharedPlaylist } = require('../controllers/favoriteController');
 const validate = require('../middleware/validate');
-const { shareParams, shareQuery } = require('../validators/favoriteSchemas');
+const { authenticate } = require('../middleware/auth');
+const { shareLimiter, generalLimiter } = require('../middleware/rateLimiter');
+const { shareParams, shareQuery, createShareBody } = require('../validators/favoriteSchemas');
 
-// GET /api/share/:shareToken — public, no auth required (paginated)
+// POST /api/share — auth required, snapshots current favorites
+router.post(
+  '/',
+  authenticate,
+  shareLimiter,
+  validate({ body: createShareBody }),
+  createSharedPlaylist
+);
+
+// GET /api/share/:id — public, no auth required (paginated)
+// Supports both snapshot playlistId and user shareToken
 router.get(
-  '/:shareToken',
+  '/:id',
+  generalLimiter,
   validate({ params: shareParams, query: shareQuery }),
   getSharedFavorites
 );

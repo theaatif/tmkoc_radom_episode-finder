@@ -44,4 +44,16 @@ const generalLimiter = rateLimit({
   },
 });
 
-module.exports = { authLimiter, generateLimiter, generalLimiter };
+const shareLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.userId || 'anon',
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false },
+  message: {
+    error: { code: 'rate_limited', message: 'Too many share requests — slow down' },
+  },
+});
+
+module.exports = { authLimiter, generateLimiter, generalLimiter, shareLimiter };
