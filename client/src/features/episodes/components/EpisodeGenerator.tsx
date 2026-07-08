@@ -264,7 +264,7 @@ export function EpisodeGenerator() {
                 className="group text-xs font-bold shadow-clay-white flex items-center gap-2 px-4 py-2.5 rounded-full border border-slate-200/60 active:scale-95 transition-all whitespace-nowrap w-full sm:w-auto justify-center"
               >
                 <RefreshCw className="h-3.5 w-3.5 text-brand-cyan group-hover:rotate-180 transition-transform duration-500" />
-                <span>Shuffle New Batch</span>
+                <span>Discover More</span>
               </Button>
             </div>
 
