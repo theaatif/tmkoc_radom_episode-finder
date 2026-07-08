@@ -30,6 +30,7 @@ interface EpisodeState {
   toggleFavorite: (episode: Episode, isFav: boolean) => Promise<void>;
   fetchEpisodes: (genre?: string, force?: boolean) => Promise<void>;
   invalidateEpisodes: () => void;
+  markEpisodeWatched: (episodeId: string) => void;
 }
 
 export const useEpisodeStore = create<EpisodeState>((set, get) => ({
@@ -124,16 +125,34 @@ export const useEpisodeStore = create<EpisodeState>((set, get) => ({
 
   invalidateEpisodes: () => {
     const { selectedEra } = get();
+    // Only clear the cache so the next fetch/era-switch is fresh.
+    // Do NOT wipe the currently displayed episodes — the user should
+    // still see the deck they were browsing after closing the player.
     set((state) => {
       const nextCache = { ...state.eraCache };
       delete nextCache[selectedEra];
       const nextExhausted = { ...state.eraExhausted };
       delete nextExhausted[selectedEra];
       return {
-        episodes: [],
-        isExhausted: false,
         eraCache: nextCache,
         eraExhausted: nextExhausted,
+      };
+    });
+  },
+
+  markEpisodeWatched: (episodeId: string) => {
+    const { selectedEra } = get();
+    set((state) => {
+      const filtered = state.episodes.filter((ep) => ep.id !== episodeId);
+      // Also update the cache so switching eras and back stays consistent
+      const nextCache = { ...state.eraCache };
+      const cacheKey = selectedEra === "all" ? "all" : selectedEra;
+      if (nextCache[cacheKey]) {
+        nextCache[cacheKey] = nextCache[cacheKey].filter((ep) => ep.id !== episodeId);
+      }
+      return {
+        episodes: filtered,
+        eraCache: nextCache,
       };
     });
   },
