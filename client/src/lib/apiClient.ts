@@ -44,6 +44,7 @@ async function refreshSession(): Promise<boolean> {
         "Content-Type": "application/json",
         "X-CSRF-Token": csrfToken,
       },
+      body: JSON.stringify({}),
     });
 
     if (res.ok) {

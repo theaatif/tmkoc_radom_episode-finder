@@ -23,7 +23,7 @@ router.post('/google', validate({ body: googleLoginBody }), checkBruteForce, goo
 router.post('/google/code', validate({ body: googleAuthCodeBody }), checkBruteForce, googleLoginWithCode);
 
 // POST /api/auth/refresh — rotate refresh token, get new access token
-// CSRF-protected because it uses cookie-based auth
+// CSRF-protected when deployed cross-origin with sameSite=none
 router.post('/refresh', validate({ body: refreshBody }), validateCsrf, refreshSession);
 
 // POST /api/auth/logout — invalidate refresh token

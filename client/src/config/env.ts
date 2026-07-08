@@ -2,7 +2,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 
 const envSchema = z.object({
-  NEXT_PUBLIC_API_BASE_URL: z.string().url().default("http://localhost:5000/api"),
+  NEXT_PUBLIC_API_BASE_URL: z.string().default("http://localhost:5000/api"),
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 });
 
