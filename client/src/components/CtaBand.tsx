@@ -22,7 +22,7 @@ export function CtaBand() {
               alt="Gokuldham Background"
               width={1337}
               height={1177}
-              className="h-full w-auto opacity-90"
+              className="h-full w-auto opacity-45 md:opacity-95"
             />
           </div>
         </div>
@@ -32,8 +32,8 @@ export function CtaBand() {
         <div className="absolute -bottom-32 -right-32 h-64 w-64 rounded-full bg-brand-yellow/10 blur-3xl pointer-events-none z-0" />
 
         {/* Content Group */}
-        <div className="space-y-4 max-w-xl text-center md:text-left z-10">
-          <span className="text-[10px] font-bold text-brand-cyan tracking-[0.15em] uppercase bg-brand-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm inline-block">
+        <div className="space-y-4 max-w-xl text-center md:text-left z-10 bg-brand-white/70 md:bg-transparent backdrop-blur-[3px] md:backdrop-blur-none p-6 sm:p-8 md:p-0 rounded-[28px] border border-slate-200/30 md:border-transparent shadow-[0_8px_30px_rgba(0,0,0,0.03)] md:shadow-none">
+          <span className="text-[10px] font-bold text-brand-cyan tracking-[0.15em] uppercase bg-brand-white px-3.5 py-1.5 rounded-full border border-slate-105 shadow-sm inline-block">
             Start Exploring
           </span>
           <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-ink font-semibold tracking-tight leading-tight">
