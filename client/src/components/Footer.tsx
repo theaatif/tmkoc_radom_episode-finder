@@ -47,7 +47,7 @@ export function Footer() {
             <div className="flex items-center gap-3 mt-2">
               {/* X (Twitter) */}
               <a
-                href="https://x.com/AatifA07"
+                href="https://x.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow us on X"
@@ -59,7 +59,7 @@ export function Footer() {
               </a>
               {/* YouTube */}
               <a
-                href="https://www.youtube.com/@taboriwithtech"
+                href="https://www.youtube.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Watch on YouTube"
@@ -112,8 +112,8 @@ export function Footer() {
             </h4>
             <ul className="flex flex-col gap-3">
               <li className="flex flex-col gap-0.5">
-                <span className="text-xs font-bold text-ink"></span>
-                <p className="text-[13px] text-muted-text leading-relaxed">It picks randomized episodes based on your selected era tags (Classic, Golden, Modern).</p>
+                <span className="text-xs font-bold text-ink">How does the Gokuldham Stream work?</span>
+                <p className="text-[13px] text-muted-text leading-relaxed">It picks random unwatched episodes based on your selected era tags (Classic, Golden, Modern). Once you watch an episode, it won't show the same episode again — just like how YouTube recommends new content while keeping track of what you've already seen.</p>
               </li>
               <li className="flex flex-col gap-0.5">
                 <span className="text-xs font-bold text-ink">Is my progress saved?</span>
