@@ -107,6 +107,15 @@ export function EpisodeCardsDeck({
             );
           })}
         </Swiper>
+        {/* Mobile Swipe Hint for Card Deck */}
+        {episodes.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-5 text-[10px] font-bold text-muted-text/75 tracking-wider uppercase select-none animate-pulse">
+            <svg className="h-3.5 w-3.5 text-brand-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16l-4-4m0 0l4-4m-4 4h18m-4 4l4-4m-4-4l4 4" />
+            </svg>
+            <span>Swipe card left/right for next</span>
+          </div>
+        )}
       </div>
 
       {/* 2. Desktop Screen: Embla Carousel with Framer Motion clipPath */}

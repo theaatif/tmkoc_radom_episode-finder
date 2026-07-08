@@ -20,10 +20,17 @@ interface EraSelectorProps {
 
 export function EraSelector({ eras, selectedEra, onSelectEra }: EraSelectorProps) {
   return (
-    <div className="w-full pb-4 mb-4 border-b border-hairline select-none z-10 flex overflow-hidden">
+    <div className="w-full pb-4 mb-4 border-b border-hairline select-none z-10 flex flex-col items-center">
       <style>{`
         .no-scrollbar::-webkit-scrollbar {
           display: none;
+        }
+        @keyframes bounce-x {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(3px); }
+        }
+        .animate-bounce-x {
+          animation: bounce-x 1.2s infinite ease-in-out;
         }
       `}</style>
       <div className="flex gap-1.5 p-1.5 bg-canvas/50 border border-hairline rounded-full shadow-[inset_2px_2px_4px_rgba(0,0,0,0.04)] overflow-x-auto no-scrollbar max-w-full scroll-smooth mx-auto">
@@ -42,6 +49,13 @@ export function EraSelector({ eras, selectedEra, onSelectEra }: EraSelectorProps
             </button>
           );
         })}
+      </div>
+      {/* Mobile Swipe Hint */}
+      <div className="flex md:hidden items-center justify-center gap-1.5 mt-2 text-[10px] font-bold text-muted-text/75 tracking-wider uppercase select-none animate-pulse">
+        <span>Swipe left/right to view more eras</span>
+        <svg className="h-3.5 w-3.5 text-brand-cyan animate-bounce-x" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        </svg>
       </div>
     </div>
   );
