@@ -25,7 +25,7 @@ const getCsrfToken = (_req, res) => {
   res.cookie(CSRF_COOKIE_NAME, token, {
     httpOnly: false,   // client-side JS needs to read this
     secure: config.cookie.secure,
-    sameSite: 'strict',
+    sameSite: config.cookie.secure ? 'none' : 'lax',
     maxAge: 60 * 60 * 1000, // 1 hour
     path: '/',
   });

@@ -25,7 +25,7 @@ const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60;
 const getRefreshCookieOptions = () => ({
   httpOnly: true,
   secure: config.cookie.secure,
-  sameSite: 'strict',
+  sameSite: config.cookie.secure ? 'none' : 'lax',
   maxAge: REFRESH_TOKEN_TTL * 1000,
   path: '/api/auth',
   ...(config.cookie.domain ? { domain: config.cookie.domain } : {}),
