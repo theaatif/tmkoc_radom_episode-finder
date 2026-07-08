@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { GetStartedModal } from "@/features/auth/components/GetStartedModal";
 import { fetchSharedFavorites } from "@/features/episodes/episodes.api";
-import { EpisodeGrid, Episode } from "@/features/episodes/components/EpisodeGrid";
+import { Episode } from "@/features/episodes/components/EpisodeGrid";
+import { FavoritesPinterestCarousel } from "@/features/episodes/components/FavoritesPinterestCarousel";
 import { EpisodePlayer } from "@/features/episodes/components/EpisodePlayer";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { SessionLoader } from "@/components/ui/session-loader";
@@ -151,8 +152,8 @@ export default function SharePage({ params }: SharePageProps) {
               </div>
             ) : episodes.length > 0 ? (
               <div className="flex flex-col space-y-8 flex-1">
-                {/* Reusable Grid in Read-Only Mode (no onToggleFavorite passed) */}
-                <EpisodeGrid
+                {/* Reusable Pinterest Grid in Read-Only Mode (no onToggleFavorite passed) */}
+                <FavoritesPinterestCarousel
                   episodes={episodes}
                   onSelectEpisode={(ep) => setActiveEpisode(ep)}
                 />
