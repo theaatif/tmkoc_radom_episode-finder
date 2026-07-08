@@ -33,11 +33,10 @@ export function EraSelector({ eras, selectedEra, onSelectEra }: EraSelectorProps
             <button
               key={era.id}
               onClick={() => onSelectEra(era.id)}
-              className={`px-4 py-2 text-xs transition-all duration-150 rounded-full cursor-pointer border-0 font-bold shrink-0 ${
-                isActive
+              className={`px-4 py-2 text-xs transition-all duration-150 rounded-full cursor-pointer border-0 font-bold shrink-0 ${isActive
                   ? "bg-brand-cyan text-brand-white shadow-clay-cyan active:translate-y-[1px]"
                   : "bg-transparent text-muted-text hover:text-ink hover:bg-canvas/50"
-              }`}
+                }`}
             >
               {era.name}
             </button>
@@ -213,10 +212,10 @@ export function EpisodeGenerator() {
             Smart Discovery
           </span>
           <h1 className="font-display text-3xl md:text-4xl text-ink font-semibold tracking-[-0.02em]">
-            Unwatched Episode Finder
+            Gokuldham Stream
           </h1>
           <p className="text-sm text-muted-text mt-1 font-normal">
-            Select your preferred era to filter random generation.
+            Select your preferred era to filter unseen Episode.
           </p>
         </div>
       </div>

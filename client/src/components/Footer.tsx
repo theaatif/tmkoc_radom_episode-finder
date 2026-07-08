@@ -36,7 +36,7 @@ export function Footer() {
                 />
               </div>
               <span className="font-display text-xl text-ink font-bold tracking-tight">
-                TMKOC Player
+                Gokuldham Stream
               </span>
             </div>
             <p className="text-sm text-muted-text leading-relaxed max-w-xs font-normal">
@@ -130,7 +130,7 @@ export function Footer() {
         {/* Bottom Section: Divider & Disclaimer */}
         <div className="border-t border-slate-200/50 pt-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <p className="text-xs text-muted-text/80 font-normal">
-            &copy; {new Date().getFullYear()} TMKOC Player. Developed by fans, for fans.
+            &copy; {new Date().getFullYear()} Gokuldham Stream. Developed by fans, for fans.
           </p>
           <p className="text-[11px] text-muted-text/70 max-w-md leading-relaxed md:text-right font-normal">
             Disclaimer: This is an unofficial portfolio project. All television characters, logos, audio/video assets, and name branding are trademarks of <span className="font-bold text-slate-600">Neela Film Productions</span>.

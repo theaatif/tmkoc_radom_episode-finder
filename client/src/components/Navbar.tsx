@@ -16,7 +16,7 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Episode Finder", href: "/generate" },
+    { name: "Gokuldham Stream", href: "/generate" },
     { name: "Favorites", href: "/favorites" },
     { name: "Watch History", href: "/history" },
   ];
@@ -39,7 +39,7 @@ export function Navbar() {
               />
             </div>
             <span className="font-display text-sm sm:text-base tracking-[-0.03em] text-ink font-bold group-hover:text-brand-cyan transition-colors">
-              TMKOC Player
+              Gokuldham Stream
             </span>
           </Link>
         </div>

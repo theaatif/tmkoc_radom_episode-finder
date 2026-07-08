@@ -63,22 +63,19 @@ export function HeroSection({ onGenerateClick }: HeroSectionProps) {
       </div>
 
       {/* ═══ MAIN CONTENT: Left-Aligned ═══ */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 sm:px-8 lg:px-12 py-16 md:py-24 flex flex-col justify-center">
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 sm:px-8 lg:px-12 pt-28 pb-16 sm:pt-32 md:pt-36 lg:py-24 flex flex-col justify-center">
 
         {/* ── LEFT COLUMN: Text Content ── */}
-        <div className="flex-1 w-full max-w-2xl flex flex-col items-start text-left gap-6 sm:gap-8">
+        <div className="flex-1 w-full max-w-3xl flex flex-col items-start text-left gap-6 sm:gap-8">
 
-          {/* Status Indicator */}
-          {/* <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-brand-white/40 backdrop-blur-md border border-brand-white/50 shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-          </div> */}
+          {/* Headline + Logo Group */}
+          <div className="flex flex-col items-start gap-2.5 sm:gap-3">
+            {/* Tagline */}
+            <p className="text-[10px] sm:text-xs font-bold text-brand-cyan uppercase tracking-[0.18em] leading-none max-w-xl">
+              Stop Re-watching the Same 50 Episodes on YouTube.
+            </p>
 
-          {/* Headline + Logo */}
-          <div className="flex flex-col items-start gap-2">
-            <h1 className="font-[family-name:var(--font-geist-sans)] text-4xl sm:text-5xl lg:text-[64px] text-ink font-extrabold tracking-tight leading-[1.05]">
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-[64px] text-ink font-semibold tracking-[-0.03em] leading-[1.05] sm:whitespace-nowrap">
               Discover Unseen Episodes of
             </h1>
             <div className="relative w-[300px] h-[95px] sm:w-[420px] sm:h-[135px] md:w-[540px] md:h-[175px] -ml-2 sm:-ml-3 mt-1">

@@ -48,7 +48,7 @@ export function SignOutModal({ isOpen, onClose, onConfirm }: SignOutModalProps) 
             Sign Out
           </h3>
           <p className="text-sm text-muted-text mt-2 leading-relaxed">
-            Are you sure you want to sign out? You&apos;ll need to sign in again to access the generator.
+            Are you sure you want to sign out? You&apos;ll need to sign in again to access your history and play unseen episodes.
           </p>
         </div>
 
