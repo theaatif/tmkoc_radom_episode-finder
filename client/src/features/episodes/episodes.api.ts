@@ -78,7 +78,15 @@ export async function fetchSharedFavorites(shareToken: string, page = 1, limit =
  * episode objects just to render heart icons on the generator page.
  */
 export async function fetchFavoriteIds(): Promise<Set<string>> {
-  const data = await request<FavoritesResponse>("/favorites?limit=200&idsOnly=true");
-  return new Set(data.favorites.map((f) => f.id));
+  // Fetch first page — if user has more favorites, keep fetching until exhausted
+  const ids = new Set<string>();
+  let page = 1;
+  while (true) {
+    const data = await request<FavoritesResponse>(`/favorites?page=${page}&limit=500&idsOnly=true`);
+    for (const f of data.favorites) ids.add(f.id);
+    if (page >= data.pagination.totalPages) break;
+    page++;
+  }
+  return ids;
 }
 

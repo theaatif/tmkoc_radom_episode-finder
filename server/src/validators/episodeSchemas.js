@@ -23,7 +23,7 @@ const paginationQuery = {
     .number()
     .int()
     .min(1, 'Limit must be at least 1')
-    .max(100, 'Limit cannot exceed 100')
+    .max(1000, 'Limit cannot exceed 1000')
     .optional()
     .default(20),
 };

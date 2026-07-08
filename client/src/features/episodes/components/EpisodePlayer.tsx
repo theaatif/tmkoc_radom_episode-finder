@@ -7,6 +7,7 @@ interface EpisodePlayerProps {
   videoId: string;
   episodeId: string;
   onClose: () => void;
+  onWatched?: () => void;
 }
 
 // Extend Window interface for YouTube global hooks
@@ -17,8 +18,10 @@ declare global {
   }
 }
 
-export function EpisodePlayer({ videoId, episodeId, onClose }: EpisodePlayerProps) {
+export function EpisodePlayer({ videoId, episodeId, onClose, onWatched }: EpisodePlayerProps) {
   const hasLoggedWatch = useRef(false);
+  const onWatchedRef = useRef(onWatched);
+  onWatchedRef.current = onWatched;
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -31,9 +34,8 @@ export function EpisodePlayer({ videoId, episodeId, onClose }: EpisodePlayerProp
             const PLAYING = 1;
             if (event.data === PLAYING && !hasLoggedWatch.current) {
               hasLoggedWatch.current = true;
-              markWatched(episodeId).catch((err) => {
-                console.error("Failed to mark episode as watched:", err);
-              });
+              markWatched(episodeId).catch(() => {});
+              onWatchedRef.current?.();
             }
           },
         },

@@ -5,7 +5,8 @@ const ApiError = require('../utils/ApiError');
 // Pagination defaults and limits
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
+const MAX_LIMIT_IDS = 1000;   // lightweight — only ObjectIds
+const MAX_LIMIT_FULL = 200;   // full populate — heavier payload
 
 /**
  * POST /favorites/:episodeId
@@ -61,27 +62,33 @@ const getFavorites = async (req, res, next) => {
   try {
     const idsOnly = req.query.idsOnly === 'true';
     const page = Math.max(1, parseInt(req.query.page, 10) || DEFAULT_PAGE);
-    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
+    const maxLimit = idsOnly ? MAX_LIMIT_IDS : MAX_LIMIT_FULL;
+    const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
 
+    let favoritesQuery = Favorite.find({ userId: req.userId })
+      .sort({ addedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    if (!idsOnly) {
+      favoritesQuery = favoritesQuery.populate({ path: 'episodeId', select: 'title genre thumbnailUrl youtubeVideoId' });
+    }
+
     const [favorites, total] = await Promise.all([
-      Favorite.find({ userId: req.userId })
-        .sort({ addedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate(idsOnly ? [] : [{ path: 'episodeId', select: 'title genre thumbnailUrl youtubeVideoId' }])
-        .lean(),
+      favoritesQuery.lean().exec(),
       Favorite.countDocuments({ userId: req.userId }),
     ]);
 
     const episodes = favorites
-      .filter((f) => idsOnly ? f.episodeId : f.episodeId)
+      .filter((f) => f && f.episodeId)
       .map((f) => {
         if (idsOnly) {
-          return { id: (f.episodeId?._id || f.episodeId).toString(), addedAt: f.addedAt };
+          const idVal = f.episodeId._id || f.episodeId;
+          return { id: idVal.toString(), addedAt: f.addedAt };
         }
         return {
-          id: f.episodeId._id,
+          id: f.episodeId._id.toString(),
           title: f.episodeId.title,
           genre: f.episodeId.genre,
           thumbnailUrl: f.episodeId.thumbnailUrl,
@@ -119,7 +126,8 @@ const getSharedFavorites = async (req, res, next) => {
     }
 
     const page = Math.max(1, parseInt(req.query.page, 10) || DEFAULT_PAGE);
-    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
+    const maxLimit = idsOnly ? MAX_LIMIT_IDS : MAX_LIMIT_FULL;
+    const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit, 10) || DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
 
     const [favorites, total] = await Promise.all([

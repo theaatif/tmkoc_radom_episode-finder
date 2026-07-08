@@ -192,7 +192,6 @@ export function EpisodeGenerator() {
     selectedEra,
     setSelectedEra,
     activeEpisode,
-    setActiveEpisode,
     favoritedIds,
     episodes,
     loading,
@@ -201,6 +200,8 @@ export function EpisodeGenerator() {
     handleToggleFavorite,
     handleGenerate,
     eras,
+    handleSetActiveEpisode,
+    handleEpisodeWatched,
   } = useEpisodeGenerator();
 
   return (
@@ -257,7 +258,7 @@ export function EpisodeGenerator() {
             {/* Reusable Deck */}
             <EpisodeCardsDeck
               episodes={episodes}
-              onSelectEpisode={(ep) => setActiveEpisode(ep)}
+              onSelectEpisode={(ep) => handleSetActiveEpisode(ep)}
               favoritedIds={favoritedIds}
               onToggleFavorite={handleToggleFavorite}
             />
@@ -272,7 +273,8 @@ export function EpisodeGenerator() {
         <EpisodePlayer
           videoId={activeEpisode.youtubeVideoId}
           episodeId={activeEpisode.id}
-          onClose={() => setActiveEpisode(null)}
+          onClose={() => handleSetActiveEpisode(null)}
+          onWatched={handleEpisodeWatched}
         />
       )}
     </div>

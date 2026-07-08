@@ -1,52 +1,36 @@
-import { useState, useEffect } from "react";
-import { useRandomEpisodes } from "./useRandomEpisodes";
-import { useFavorites } from "./useFavorites";
-import { fetchFavoriteIds } from "../episodes.api";
+import { useEffect, useCallback } from "react";
+import { useEpisodeStore } from "../store/episodeStore";
 import { Episode } from "../components/EpisodeGrid";
 
-// Module-level cache for the selected era tab
-let cacheSelectedEra = "all";
-
 export function useEpisodeGenerator() {
-  const [selectedEra, setSelectedEraInternal] = useState<string>(cacheSelectedEra);
-  const [activeEpisode, setActiveEpisode] = useState<Episode | null>(null);
-  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
+  const selectedEra = useEpisodeStore((state) => state.selectedEra);
+  const setSelectedEra = useEpisodeStore((state) => state.setSelectedEra);
+  const activeEpisode = useEpisodeStore((state) => state.activeEpisode);
+  const setActiveEpisode = useEpisodeStore((state) => state.setActiveEpisode);
+  const favoritedIds = useEpisodeStore((state) => state.favoritedIds);
+  const episodes = useEpisodeStore((state) => state.episodes);
+  const loading = useEpisodeStore((state) => state.loading);
+  const error = useEpisodeStore((state) => state.error);
+  const isExhausted = useEpisodeStore((state) => state.isExhausted);
+  const loadFavorites = useEpisodeStore((state) => state.loadFavorites);
+  const toggleFavorite = useEpisodeStore((state) => state.toggleFavorite);
+  const fetchEpisodes = useEpisodeStore((state) => state.fetchEpisodes);
+  const invalidateEpisodes = useEpisodeStore((state) => state.invalidateEpisodes);
 
-  const setSelectedEra = (era: string) => {
-    cacheSelectedEra = era;
-    setSelectedEraInternal(era);
-  };
-
-  const {
-    episodes,
-    loading,
-    error,
-    isExhausted,
-    fetchEpisodes,
-  } = useRandomEpisodes();
-
-  const { toggleFavorite } = useFavorites();
-
-  // Load only favorited episode IDs on mount to display filled heart icons
+  // Sync favorites on mount
   useEffect(() => {
-    fetchFavoriteIds().then(setFavoritedIds).catch(() => {});
-  }, []);
+    loadFavorites();
+  }, [loadFavorites]);
 
-  // Automatically trigger discovery when selectedEra changes (uses cache unless forced)
+  // Fetch episodes automatically when selectedEra changes
   useEffect(() => {
     const genreParam = selectedEra === "all" ? undefined : selectedEra;
     fetchEpisodes(genreParam);
-  }, [selectedEra]);
+  }, [selectedEra, fetchEpisodes]);
 
   const handleToggleFavorite = async (episode: Episode, isFav: boolean) => {
     try {
       await toggleFavorite(episode, isFav);
-      setFavoritedIds((prev) => {
-        const next = new Set(prev);
-        if (isFav) next.delete(episode.id);
-        else next.add(episode.id);
-        return next;
-      });
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
     }
@@ -54,8 +38,16 @@ export function useEpisodeGenerator() {
 
   const handleGenerate = () => {
     const genreParam = selectedEra === "all" ? undefined : selectedEra;
-    fetchEpisodes(genreParam, true); // Pass force = true to bypass cache and pull new episodes
+    fetchEpisodes(genreParam, true); // Force bypass cache for shuffles
   };
+
+  const handleSetActiveEpisode = useCallback((ep: Episode | null) => {
+    setActiveEpisode(ep);
+  }, [setActiveEpisode]);
+
+  const handleEpisodeWatched = useCallback(() => {
+    invalidateEpisodes();
+  }, [invalidateEpisodes]);
 
   const eras = [
     { id: "all", name: "All Eras" },
@@ -77,5 +69,7 @@ export function useEpisodeGenerator() {
     handleToggleFavorite,
     handleGenerate,
     eras,
+    handleSetActiveEpisode,
+    handleEpisodeWatched,
   };
 }

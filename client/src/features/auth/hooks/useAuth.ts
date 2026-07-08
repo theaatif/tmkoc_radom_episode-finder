@@ -1,9 +1,21 @@
 "use client";
 
-import { useAuthContext } from "@/features/auth/context/AuthContext";
+import { useAuthStore, type User } from "@/features/auth/store/authStore";
 
-export type { User } from "@/features/auth/context/AuthContext";
+export type { User };
 
 export function useAuth() {
-  return useAuthContext();
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const login = useAuthStore((state) => state.login);
+  const logout = useAuthStore((state) => state.logout);
+
+  return {
+    user,
+    loading,
+    isAuthenticated,
+    login,
+    logout,
+  };
 }
