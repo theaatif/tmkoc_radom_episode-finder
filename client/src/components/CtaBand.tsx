@@ -40,7 +40,7 @@ export function CtaBand() {
             Ready to explore Gokuldham Society?
           </h2>
           <p className="text-sm md:text-base text-muted-text leading-relaxed font-normal">
-            Join thousands of active viewers! Log in utilizing Google OAuth 2.0 to begin your journey, filter out watched episodes, and track your complete progress.
+            Step into Gokuldham Society! Sign in with Google to personalize your experience, filter out episodes you've already watched, and track your streaming progress in real-time.
           </p>
           <div className="pt-2 flex justify-center md:justify-start">
             <Link href="/generate">
