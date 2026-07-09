@@ -113,7 +113,7 @@ export function Footer() {
             <ul className="flex flex-col gap-3">
               <li className="flex flex-col gap-0.5">
                 <span className="text-xs font-bold text-ink">How does the Gokuldham Stream work?</span>
-                <p className="text-[13px] text-muted-text leading-relaxed">It picks random unwatched episodes based on your selected era tags (Classic, Golden, Modern). Once you watch an episode, it won't show the same episode again — just like how YouTube recommends new content while keeping track of what you've already seen.</p>
+                <p className="text-[13px] text-muted-text leading-relaxed">It picks random unwatched episodes based on your selected era tags (Classic, Golden, Modern). Once you watch an episode, it won't be recommended again unlike YouTube, where the same content can reappear with different thumbnails.</p>
               </li>
               <li className="flex flex-col gap-0.5">
                 <span className="text-xs font-bold text-ink">Is my progress saved?</span>
