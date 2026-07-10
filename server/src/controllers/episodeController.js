@@ -77,12 +77,22 @@ const generateEpisodes = async (req, res, next) => {
     let watchedCount;
 
     if (genre) {
-      // When filtering by genre, only count watched episodes in that genre
-      const genreEpisodeIds = await Episode.find(matchStage).select('_id').lean();
-      watchedCount = await WatchHistory.countDocuments({
-        userId,
-        episodeId: { $in: genreEpisodeIds.map((e) => e._id) },
-      });
+      // Count watched episodes in this genre using a database-side lookup
+      const watchedCountResult = await WatchHistory.aggregate([
+        { $match: { userId } },
+        {
+          $lookup: {
+            from: 'episodes',
+            localField: 'episodeId',
+            foreignField: '_id',
+            as: 'episode',
+          },
+        },
+        { $unwind: '$episode' },
+        { $match: { 'episode.genre': genre } },
+        { $count: 'count' },
+      ]);
+      watchedCount = watchedCountResult[0]?.count || 0;
     } else {
       watchedCount = await WatchHistory.countDocuments({ userId });
     }
@@ -97,7 +107,7 @@ const generateEpisodes = async (req, res, next) => {
         thumbnailUrl: ep.thumbnailUrl,
         youtubeVideoId: ep.youtubeVideoId,
       })),
-      remaining: remaining - result.length,
+      remaining: Math.max(0, remaining - result.length),
     });
   } catch (err) {
     next(err);
