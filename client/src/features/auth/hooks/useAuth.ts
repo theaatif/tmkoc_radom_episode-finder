@@ -8,6 +8,8 @@ export function useAuth() {
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const showSuccessModal = useAuthStore((state) => state.showSuccessModal);
+  const setShowSuccessModal = useAuthStore((state) => state.setShowSuccessModal);
   const login = useAuthStore((state) => state.login);
   const logout = useAuthStore((state) => state.logout);
 
@@ -15,6 +17,8 @@ export function useAuth() {
     user,
     loading,
     isAuthenticated,
+    showSuccessModal,
+    setShowSuccessModal,
     login,
     logout,
   };

@@ -16,6 +16,8 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  showSuccessModal: boolean;
+  setShowSuccessModal: (show: boolean) => void;
   restoreSession: () => Promise<void>;
   login: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -25,6 +27,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   isAuthenticated: false,
+  showSuccessModal: false,
+  setShowSuccessModal: (show: boolean) => set({ showSuccessModal: show }),
 
   restoreSession: async () => {
     try {
@@ -74,7 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     const data = await res.json();
     setAccessToken(data.accessToken);
-    set({ user: data.user, isAuthenticated: true });
+    set({ user: data.user, isAuthenticated: true, showSuccessModal: true });
   },
 
   logout: async () => {
