@@ -1,5 +1,38 @@
 const { UserVisit, User, WatchHistory } = require('../models');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+
+/**
+ * Hash an IP address with SHA-256 so it stays unique per IP
+ * but is not human-readable. Uses a per-process random salt
+ * initialized once to keep hashes consistent across requests
+ * (same IP → same hash within one process lifetime).
+ */
+let _ipHashSalt = null;
+function getIpHashSalt() {
+  if (!_ipHashSalt) {
+    _ipHashSalt = crypto.randomBytes(32).toString('hex');
+  }
+  return _ipHashSalt;
+}
+
+function hashIp(ip) {
+  if (!ip || ip === 'unknown') return 'unknown';
+  return crypto.createHmac('sha256', getIpHashSalt()).update(ip).digest('hex').substring(0, 16);
+}
+
+/**
+ * Mask an email address for PII protection.
+ * e.g. "jethalal@gmail.com" → "j***@gmail.com"
+ */
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return email || 'no-email';
+  const [localPart, domain] = email.split('@');
+  const masked = localPart.length <= 2
+    ? localPart[0] + '***'
+    : localPart[0] + '***' + localPart[localPart.length - 1];
+  return masked + '@' + domain;
+}
 
 /**
  * Record a user's visit with a cooldown to avoid logging rapid page refreshes.
@@ -104,16 +137,25 @@ async function getVisitStats() {
     .lean();
 
   return {
-    frequentVisitors,
+    frequentVisitors: frequentVisitors.map(visitor => ({
+      userId: visitor.userId,
+      visitCount: visitor.visitCount,
+      lastVisitedAt: visitor.lastVisitedAt,
+      user: {
+        name: visitor.user.name,
+        email: maskEmail(visitor.user.email),
+        avatarUrl: visitor.user.avatarUrl,
+      },
+    })),
     recentVisits: recentVisits.map(visit => ({
       id: visit._id,
       visitedAt: visit.visitedAt,
-      ip: visit.ip,
+      ip: hashIp(visit.ip),
       userAgent: visit.userAgent,
       user: visit.userId ? {
         id: visit.userId._id,
         name: visit.userId.name,
-        email: visit.userId.email,
+        email: maskEmail(visit.userId.email),
         avatarUrl: visit.userId.avatarUrl,
       } : null,
     })),

@@ -16,10 +16,12 @@ const userVisitSchema = new mongoose.Schema(
     ip: {
       type: String,
       trim: true,
+      maxlength: 45,
     },
     userAgent: {
       type: String,
       trim: true,
+      maxlength: 500,
     },
   },
   {

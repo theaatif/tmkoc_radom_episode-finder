@@ -24,14 +24,16 @@ export function useAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
 
-  // Retrieve credentials from sessionStorage on mount
-  useEffect(() => {
-    const cachedToken = sessionStorage.getItem("admin_auth_token");
-    if (cachedToken) {
-      setIsAdminLoggedIn(true);
-      loadStats(cachedToken);
-    }
-  }, []);
+  const ADMIN_SESSION_TTL = 30 * 60 * 1000; // 30 minutes
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_auth_token");
+    sessionStorage.removeItem("admin_auth_expires");
+    setIsAdminLoggedIn(false);
+    setStats(null);
+    setUserIdInput("");
+    setPasswordInput("");
+  };
 
   const loadStats = async (token: string) => {
     try {
@@ -42,7 +44,6 @@ export function useAdminDashboard() {
       setIsAdminLoggedIn(true);
     } catch (err: any) {
       setError(err?.message || "Failed to load visitor statistics.");
-      // If unauthorized, clear local credentials
       if (err?.message === "unauthorized" || err?.message === "unauthenticated") {
         handleLogout();
       }
@@ -51,27 +52,37 @@ export function useAdminDashboard() {
     }
   };
 
+  // Retrieve credentials from sessionStorage on mount
+  useEffect(() => {
+    const cachedToken = sessionStorage.getItem("admin_auth_token");
+    const expiresAt = sessionStorage.getItem("admin_auth_expires");
+    if (cachedToken && expiresAt) {
+      if (Date.now() > parseInt(expiresAt, 10)) {
+        handleLogout();
+        return;
+      }
+      setIsAdminLoggedIn(true);
+      loadStats(cachedToken);
+    }
+  }, []);
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
 
-    if (userIdInput !== "Maruf" || passwordInput !== "@BabitaGi") {
-      setLoginError("Ae Bhindi Rona band kar! Invalid credentials.");
-      return;
-    }
-
-    // Create Basic Auth token
     const token = btoa(`${userIdInput}:${passwordInput}`);
-    sessionStorage.setItem("admin_auth_token", token);
-    await loadStats(token);
-  };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("admin_auth_token");
-    setIsAdminLoggedIn(false);
-    setStats(null);
-    setUserIdInput("");
-    setPasswordInput("");
+    try {
+      await loadStats(token);
+      sessionStorage.setItem("admin_auth_token", token);
+      sessionStorage.setItem("admin_auth_expires", String(Date.now() + ADMIN_SESSION_TTL));
+    } catch (err: any) {
+      if (err?.message === "unauthorized" || err?.message === "unauthenticated") {
+        setLoginError("Ae Bhindi Rona band kar! Invalid credentials.");
+      } else {
+        setLoginError(err?.message || "Failed to connect. Try again.");
+      }
+    }
   };
 
   return {
