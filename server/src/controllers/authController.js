@@ -5,6 +5,7 @@ const redis = require('../config/redis');
 const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
+const { recordVisit, getVisitStats } = require('../services/visitService');
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -142,6 +143,9 @@ const googleLogin = async (req, res, next) => {
       ip,
     });
 
+    // Record the user visit in background (no-blocking)
+    recordVisit(session.user.id, ip, req.headers['user-agent']).catch(() => {});
+
     res.status(200).json({
       accessToken: session.accessToken,
       user: session.user,
@@ -185,6 +189,9 @@ const googleLoginWithCode = async (req, res, next) => {
       method: 'auth_code',
       ip,
     });
+
+    // Record the user visit in background (no-blocking)
+    recordVisit(session.user.id, ip, req.headers['user-agent']).catch(() => {});
 
     res.status(200).json({
       accessToken: session.accessToken,
@@ -307,6 +314,9 @@ const refreshSession = async (req, res, next) => {
 
     logger.info('auth.token_refreshed', { userId, ip: getClientIp(req) });
 
+    // Record the user visit in background (no-blocking)
+    recordVisit(userId, getClientIp(req), req.headers['user-agent']).catch(() => {});
+
     res.status(200).json({
       accessToken: newAccessToken,
       user: {
@@ -353,5 +363,19 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { googleLogin, googleLoginWithCode, refreshSession, logout };
+/**
+ * GET /auth/visits
+ *
+ * Fetch platform user visit statistics (frequent visitors & recent visits).
+ */
+const getVisits = async (req, res, next) => {
+  try {
+    const stats = await getVisitStats();
+    res.status(200).json(stats);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { googleLogin, googleLoginWithCode, refreshSession, logout, getVisits };
 

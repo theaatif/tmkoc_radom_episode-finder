@@ -72,7 +72,7 @@ export async function request<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  if (accessToken) {
+  if (accessToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
@@ -90,7 +90,7 @@ export async function request<T>(
       if (hasBody) {
         retryHeaders.set("Content-Type", "application/json");
       }
-      if (accessToken) {
+      if (accessToken && !retryHeaders.has("Authorization")) {
         retryHeaders.set("Authorization", `Bearer ${accessToken}`);
       }
       const retryRes = await fetch(

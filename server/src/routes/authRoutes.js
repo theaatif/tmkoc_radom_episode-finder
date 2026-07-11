@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { googleLogin, googleLoginWithCode, refreshSession, logout } = require('../controllers/authController');
-const { authenticate } = require('../middleware/auth');
+const { googleLogin, googleLoginWithCode, refreshSession, logout, getVisits } = require('../controllers/authController');
+const { authenticate, adminAuthenticate } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { getCsrfToken, validateCsrf } = require('../middleware/csrf');
 const { checkBruteForce } = require('../middleware/bruteForce');
@@ -29,5 +29,8 @@ router.post('/refresh', validate({ body: refreshBody }), validateCsrf, refreshSe
 // POST /api/auth/logout — invalidate refresh token
 // CSRF-protected because it uses cookie-based auth
 router.post('/logout', authenticate, validateCsrf, logout);
+
+// GET /api/auth/visits — fetch platform visitor analytics (protected by Admin Basic Auth)
+router.get('/visits', adminAuthenticate, getVisits);
 
 module.exports = router;

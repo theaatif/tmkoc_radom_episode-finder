@@ -61,4 +61,34 @@ const optionalAuth = (req, _res, next) => {
   next();
 };
 
-module.exports = { authenticate, optionalAuth };
+/**
+ * Middleware: verifies Basic Auth credentials for admin access.
+ * Required credentials: username "Maruf", password "@BabitaGi".
+ */
+const adminAuthenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    return res.status(401).json({
+      error: { code: 'unauthorized', message: 'Admin authentication required' },
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const [username, password] = decoded.split(':');
+
+    if (username === 'Maruf' && password === '@BabitaGi') {
+      return next();
+    }
+  } catch (err) {
+    // Fail silently and return 401
+  }
+
+  return res.status(401).json({
+    error: { code: 'unauthorized', message: 'Invalid admin credentials' },
+  });
+};
+
+module.exports = { authenticate, optionalAuth, adminAuthenticate };
