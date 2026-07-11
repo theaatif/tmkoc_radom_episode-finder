@@ -9,6 +9,7 @@ interface AdminLoginFormProps {
   showPassword: boolean;
   setShowPassword: (val: boolean) => void;
   loginError: string | null;
+  loading: boolean;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -20,6 +21,7 @@ export function AdminLoginForm({
   showPassword,
   setShowPassword,
   loginError,
+  loading,
   onSubmit,
 }: AdminLoginFormProps) {
   return (
@@ -84,9 +86,20 @@ export function AdminLoginForm({
         
         <button
           type="submit"
-          className="w-full mt-2 bg-[#0a0a0a] text-white hover:bg-zinc-800 py-3 rounded-xl text-sm font-bold shadow-md cursor-pointer transition-transform active:scale-98"
+          disabled={loading}
+          className="w-full mt-2 bg-[#0a0a0a] text-white hover:bg-zinc-800 py-3 rounded-xl text-sm font-bold shadow-md cursor-pointer transition-transform active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Open Entry Book
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Verifying...
+            </span>
+          ) : (
+            "Open Entry Book"
+          )}
         </button>
       </form>
     </div>

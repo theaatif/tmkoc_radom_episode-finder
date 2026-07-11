@@ -15,6 +15,7 @@ export function useAdminDashboard() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Navigation tabs: entries log, all users list, watch history
   const [activeTab, setActiveTab] = useState<"entries" | "members" | "history">("entries");
@@ -99,6 +100,8 @@ export function useAdminDashboard() {
     loading,
     error,
     stats,
+    loggingOut,
+    setLoggingOut,
     handleLoginSubmit,
     handleLogout,
     loadStats,
